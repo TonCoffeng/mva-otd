@@ -121,6 +121,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .a4 .kv .k{width:80px;color:#555;flex-shrink:0}
 .a4 .hl{background:#fff3cd;transition:background .4s}
 .a4 .pv-court{font-weight:700;font-size:9px;background:#f4f6fa;border-left:3px solid var(--oranje);padding:7px 9px;border-radius:3px;margin:5px 0}
+.a4 .pv-wwft{font-size:8px;font-style:italic;color:#555;background:#f8f9fc;border-left:2px solid var(--grijs-mid);padding:5px 8px;border-radius:3px;margin:6px 0}
 .a4 .pv-vink{font-size:8.5px;margin:2px 0}
 .a4 .pv-pakket{border-top:1px solid var(--navy);margin-top:14px;padding-top:6px}
 .a4 .pv-pkrow{display:flex;justify-content:space-between;font-weight:700;font-size:9px;color:var(--navy)}
@@ -382,6 +383,7 @@ function render(){
     <div class="kv"><span class="k">Naam</span><span>${naam||'—'}</span></div>
     <div class="kv"><span class="k">E-mail</span><span>${v('i_em')||'—'}</span></div>
     <div class="kv"><span class="k">Geboren</span><span>${v('i_gbd')} te ${v('i_gbp')}</span></div>
+    <div class="pv-wwft">Na ondertekening wordt automatisch het verplichte cliëntenonderzoek uitgevoerd. De opdracht wordt pas actief in behandeling genomen nadat de benodigde controles en dossiergegevens volledig zijn verwerkt.</div>
     <h4>Object</h4>
     <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')}</span></div>
     <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')}</span></div>
@@ -438,7 +440,7 @@ function mobPreview(open){
 // geïsoleerd: omschakelen naar portal cross-app SSO is later één wijziging hier.
 const AUTH_CONFIG = {
   url: 'https://olfcrzusdkijxroxvsgm.supabase.co',
-  anonKey: 'PLAK_HIER_DE_ANON_KEY_VAN_LEADPOOL'  // Supabase → project olfcrzusdkijxroxvsgm → Project Settings → API keys → anon / public
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sZmNyenVzZGtpanhyb3h2c2dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDEyOTQsImV4cCI6MjA5MzQ3NzI5NH0.wPygjZCIxzTTOVc2uafMtnESB0iYkxR3yF-AuiL63zc'  // Leadpool-project (olfcrzusdkijxroxvsgm) anon/public key
 };
 let sb = null;
 let HUIDIGE_GEBRUIKER = null;
