@@ -6,6 +6,7 @@
 <title>MvA OTD — Opdracht tot dienstverlening</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --navy:#1A2B5F; --navy-light:#25346c; --oranje:#E8500A; --oranje-light:#ff6a20;
@@ -142,6 +143,42 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 </head>
 <body>
 
+<style>
+  /* ===== AUTH / LOGIN ===== */
+  .header, .screen { display: none; }
+  body.ingelogd .header { display: flex; }
+  #login-screen{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),var(--navy-light));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+  body.ingelogd #login-screen{display:none}
+  .login-card{background:#fff;border-radius:16px;padding:34px 30px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.35);animation:fade .4s ease both}
+  .login-logo{font-weight:800;font-size:15px;letter-spacing:.5px;color:var(--navy);line-height:1.05;margin-bottom:22px}
+  .login-logo span{color:var(--oranje)}
+  .login-card h2{font-size:20px;color:var(--navy);margin-bottom:4px}
+  .login-card p{font-size:13px;color:var(--grijs-tekst);margin-bottom:22px}
+  .login-card .fg{margin-bottom:14px}
+  .login-card label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:5px}
+  .login-card input{width:100%;padding:12px 13px;border:1.5px solid var(--grijs-mid);border-radius:9px;font-size:14px;font-family:inherit;color:var(--navy)}
+  .login-card input:focus{outline:none;border-color:var(--navy)}
+  .btn-login{width:100%;padding:14px;background:var(--oranje);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:6px;transition:background .2s,transform .1s}
+  .btn-login:active{transform:scale(.98);background:var(--oranje-light)}
+  .btn-login:disabled{opacity:.6;cursor:wait}
+  .login-fout{color:var(--rood);font-size:13px;margin-top:12px;min-height:18px}
+  .btn-uitloggen{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn-uitloggen:hover{background:rgba(255,255,255,.25)}
+  .header-rechts{display:flex;align-items:center;gap:10px;flex-shrink:0}
+</style>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">MAKELAARSVAN<span>.</span><br>AMSTERDAM</div>
+    <h2>Opdracht tot dienstverlening</h2>
+    <p>Log in met je MakelaarsVan-account.</p>
+    <div class="fg"><label>E-mailadres</label><input id="login-email" type="email" placeholder="jij@makelaarsvan.nl" autocomplete="username"></div>
+    <div class="fg"><label>Wachtwoord</label><input id="login-pw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')AUTH.login()"></div>
+    <button class="btn-login" onclick="AUTH.login()">Inloggen</button>
+    <div id="login-fout" class="login-fout"></div>
+  </div>
+</div>
+
 <div class="header">
   <div class="header-logo">
     <div class="logo-txt">MAKELAARSVAN<span class="o">.</span><br>AMSTERDAM</div>
@@ -150,11 +187,14 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <div class="header-sub" id="hdr-sub">Rogier de Vries</div>
     </div>
   </div>
-  <div class="header-badge" id="hdr-badge">3 dossiers</div>
+  <div class="header-rechts">
+    <div class="header-badge" id="hdr-badge">3 dossiers</div>
+    <button class="btn-uitloggen" onclick="AUTH.logout()">Uitloggen</button>
+  </div>
 </div>
 
 <!-- ============ OVERZICHT ============ -->
-<div id="overzicht" class="screen actief">
+<div id="overzicht" class="screen">
   <div class="stats-bar">
     <div class="stat-card concept"><span class="num">1</span><span class="lbl">Concept</span></div>
     <div class="stat-card aangeboden"><span class="num">1</span><span class="lbl">Aangeboden</span></div>
@@ -393,7 +433,59 @@ function mobPreview(open){
   document.getElementById('preview-wrap').classList.toggle('mob-open',open);
 }
 
-tegelsHtml(); render();
+// ===== AUTH-LAAG (schakelbaar) =====
+// Identiteit komt uit het centrale Leadpool-project. Deze laag is bewust
+// geïsoleerd: omschakelen naar portal cross-app SSO is later één wijziging hier.
+const AUTH_CONFIG = {
+  url: 'https://olfcrzusdkijxroxvsgm.supabase.co',
+  anonKey: 'PLAK_HIER_DE_ANON_KEY_VAN_LEADPOOL'  // Supabase → project olfcrzusdkijxroxvsgm → Project Settings → API keys → anon / public
+};
+let sb = null;
+let HUIDIGE_GEBRUIKER = null;
+
+const AUTH = {
+  async init(){
+    sb = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.anonKey);
+    const { data:{ session } } = await sb.auth.getSession();
+    if (session) await AUTH._naLogin(session);
+  },
+  async login(){
+    const email = document.getElementById('login-email').value.trim();
+    const pw    = document.getElementById('login-pw').value;
+    const knop  = document.querySelector('.btn-login');
+    const fout  = document.getElementById('login-fout');
+    fout.textContent = '';
+    if(!email || !pw){ fout.textContent = 'Vul e-mail en wachtwoord in.'; return; }
+    knop.disabled = true; knop.textContent = 'Bezig…';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    knop.disabled = false; knop.textContent = 'Inloggen';
+    if (error){ fout.textContent = 'Inloggen mislukt: ' + error.message; return; }
+    await AUTH._naLogin(data.session);
+  },
+  async _naLogin(session){
+    const email = session.user.email;
+    // Profiel uit Leadpool (RLS: authenticated mag gebruikers lezen)
+    let gebr = null;
+    try {
+      const { data } = await sb.from('gebruikers')
+        .select('naam,rol,kantoor_id,email').eq('email', email).maybeSingle();
+      gebr = data;
+    } catch(e){ /* niet-fataal */ }
+    HUIDIGE_GEBRUIKER = gebr || { naam: email, rol: 'onbekend', email };
+    document.getElementById('hdr-sub').textContent =
+      HUIDIGE_GEBRUIKER.naam + ' · ' + HUIDIGE_GEBRUIKER.rol;
+    document.body.classList.add('ingelogd');
+    document.getElementById('overzicht').classList.add('actief');
+    tegelsHtml(); render();
+  },
+  async logout(){
+    if (sb) await sb.auth.signOut();
+    document.body.classList.remove('ingelogd');
+    location.reload();
+  }
+};
+
+AUTH.init();
 </script>
 </body>
 </html>
