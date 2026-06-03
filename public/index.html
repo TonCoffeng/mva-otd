@@ -197,24 +197,13 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 <!-- ============ OVERZICHT ============ -->
 <div id="overzicht" class="screen">
   <div class="stats-bar">
-    <div class="stat-card concept"><span class="num">1</span><span class="lbl">Concept</span></div>
-    <div class="stat-card aangeboden"><span class="num">1</span><span class="lbl">Aangeboden</span></div>
-    <div class="stat-card getekend"><span class="num">1</span><span class="lbl">Getekend</span></div>
+    <div class="stat-card concept"><span class="num" id="stat-concept">0</span><span class="lbl">Concept</span></div>
+    <div class="stat-card aangeboden"><span class="num" id="stat-aangeboden">0</span><span class="lbl">Aangeboden</span></div>
+    <div class="stat-card getekend"><span class="num" id="stat-ondertekend">0</span><span class="lbl">Ondertekend</span></div>
   </div>
-  <div class="section-title">Mijn opdrachten</div>
+  <div class="section-title" id="overzicht-titel">Mijn opdrachten</div>
 
-  <div class="otd-card getekend" onclick="openBouwer()">
-    <div><div class="adres">Iepenplein 48</div><div class="sub">Jan Herfkens · verkoop · 05-05-2026</div></div>
-    <div class="right"><div class="bedrag">1,50%</div><span class="chip chip-getekend">Getekend</span></div>
-  </div>
-  <div class="otd-card aangeboden" onclick="openBouwer()">
-    <div><div class="adres">Roetersstraat 12-2</div><div class="sub">M. de Wit · verkoop · 28-05-2026</div></div>
-    <div class="right"><div class="bedrag">1,40%</div><span class="chip chip-aangeboden">Aangeboden</span></div>
-  </div>
-  <div class="otd-card concept" onclick="openBouwer()">
-    <div><div class="adres">Czaar Peterstraat 88</div><div class="sub">Nog geen opdrachtgever · concept</div></div>
-    <div class="right"><div class="bedrag">—</div><span class="chip chip-concept">Concept</span></div>
-  </div>
+  <div id="dossier-lijst"></div>
 
   <button class="fab" onclick="openBouwer()">＋ Nieuwe OTD</button>
 </div>
@@ -238,7 +227,11 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <div class="veld-sec actief" data-sec="0">
         <div class="sec-h">Object &amp; opdrachtgever</div>
         <div class="sec-p">Haal op uit Realworks of vul handmatig in.</div>
+        <div class="fg"><label>Object uit Realworks</label>
+          <select id="i_pand" onchange="kiesPand()"><option value="">— Laden…</option></select>
+        </div>
         <div class="fg"><label>Objectadres</label><input id="i_obj" value="Iepenplein 48 te Amsterdam" oninput="render()"></div>
+        <input type="hidden" id="i_rwid" value="">
         <div class="fg-row">
           <div class="fg"><label>Bestemming</label><input id="i_best" value="wonen" oninput="render()"></div>
           <div class="fg"><label>In gebruik als</label><input id="i_gebr" value="appartement" oninput="render()"></div>
@@ -418,21 +411,115 @@ function ganaarStap(n){
 function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
 function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 
-function openBouwer(){
+function openBouwer(dossierId){
+  window.HUIDIG_DOSSIER = dossierId || null;
   document.getElementById('overzicht').classList.remove('actief');
   document.getElementById('bouwer').classList.add('actief');
   document.getElementById('hdr-titel').textContent="Nieuwe OTD";
   document.getElementById('hdr-badge').textContent="Verkoop";
-  ganaarStap(0); tegelsHtml(); render(); window.scrollTo(0,0);
+  ganaarStap(0); tegelsHtml(); render(); laadPanden(); window.scrollTo(0,0);
 }
 function naarOverzicht(){
   document.getElementById('bouwer').classList.remove('actief');
   document.getElementById('overzicht').classList.add('actief');
   document.getElementById('hdr-titel').textContent="Opdracht tot dienstverlening";
-  document.getElementById('hdr-badge').textContent="3 dossiers";
+  laadDossiers();
 }
 function mobPreview(open){
   document.getElementById('preview-wrap').classList.toggle('mob-open',open);
+}
+
+// ===== PANDEN (objectkeuze uit Realworks-aanbod) =====
+function _cap(s){ return (s||'').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase()); }
+async function laadPanden(){
+  const sel = document.getElementById('i_pand');
+  if(!sel || !sb) return;
+  sel.innerHTML = '<option value="">— Laden…</option>';
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    const res = await fetch('/.netlify/functions/otd-panden', {
+      headers: { Authorization: 'Bearer ' + session.access_token }
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error || 'fout');
+    const opts = ['<option value="">— Kies object uit Realworks —</option>'];
+    (j.panden || []).forEach(p => {
+      const adres = (p.adres||'').replace(/"/g,'&quot;');
+      opts.push(`<option value="${p.realworks_object_id}" data-adres="${adres}" data-postcode="${p.postcode||''}" data-plaats="${_cap(p.plaats)}">${p.adres||''} — ${_cap(p.plaats)}</option>`);
+    });
+    opts.push('<option value="__handmatig">Handmatig invullen…</option>');
+    sel.innerHTML = opts.join('');
+  } catch(e){
+    sel.innerHTML = '<option value="">Kon panden niet laden</option>';
+  }
+}
+function kiesPand(){
+  const sel = document.getElementById('i_pand');
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.value || opt.value === '__handmatig'){ document.getElementById('i_rwid').value=''; return; }
+  const adres  = opt.getAttribute('data-adres')  || '';
+  const plaats = opt.getAttribute('data-plaats') || '';
+  document.getElementById('i_obj').value = adres + (plaats ? ' te ' + plaats : '');
+  document.getElementById('i_rwid').value = opt.value;
+  render();
+}
+
+// ===== DOSSIERS (laden uit OTD-database via brug-function) =====
+const STATUS = {
+  concept:    { cls:'concept',    chip:'chip-concept',    label:'Concept' },
+  aangeboden: { cls:'aangeboden', chip:'chip-aangeboden', label:'Aangeboden' },
+  ondertekend:{ cls:'getekend',   chip:'chip-getekend',   label:'Ondertekend' },
+  geannuleerd:{ cls:'',           chip:'chip-concept',    label:'Geannuleerd' }
+};
+function courtageTekst(d){
+  if(d.courtage_type==='percentage' && d.courtage_pct_incl!=null)
+    return String(d.courtage_pct_incl).replace('.',',')+'%';
+  if(d.courtage_vast_bedrag!=null)
+    return '€ '+Number(d.courtage_vast_bedrag).toLocaleString('nl-NL');
+  return '—';
+}
+async function laadDossiers(){
+  const lijst = document.getElementById('dossier-lijst');
+  lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Dossiers laden…</div>';
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) throw new Error('geen sessie');
+    const res = await fetch('/.netlify/functions/otd-dossiers', {
+      headers: { Authorization: 'Bearer ' + session.access_token }
+    });
+    const json = await res.json();
+    if(!res.ok) throw new Error(json.error || ('HTTP '+res.status));
+    renderDossiers(json);
+  } catch(e){
+    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rood)">Kon dossiers niet laden: '+(e.message||e)+'</div>';
+  }
+}
+function renderDossiers(json){
+  const dossiers = json.dossiers || [];
+  document.getElementById('overzicht-titel').textContent =
+    (json.rol === 'directie') ? 'Alle opdrachten' : 'Mijn opdrachten';
+  document.getElementById('hdr-badge').textContent =
+    dossiers.length + ' dossier' + (dossiers.length===1?'':'s');
+  const tel = { concept:0, aangeboden:0, ondertekend:0 };
+  dossiers.forEach(d => { if(tel[d.status]!=null) tel[d.status]++; });
+  document.getElementById('stat-concept').textContent = tel.concept;
+  document.getElementById('stat-aangeboden').textContent = tel.aangeboden;
+  document.getElementById('stat-ondertekend').textContent = tel.ondertekend;
+  const lijst = document.getElementById('dossier-lijst');
+  if(!dossiers.length){
+    lijst.innerHTML = '<div style="padding:28px;text-align:center;color:var(--grijs-tekst)">Nog geen opdrachten. Maak je eerste OTD met de knop hieronder.</div>';
+    return;
+  }
+  lijst.innerHTML = dossiers.map(d => {
+    const s = STATUS[d.status] || STATUS.concept;
+    const adres = [d.object_adres, d.object_plaats].filter(Boolean).join(', ') || 'Onbekend object';
+    const datum = d.datum_opdracht ? d.datum_opdracht.split('-').reverse().join('-') : '';
+    const sub = [d.opdrachtgever || 'Nog geen opdrachtgever', d.documenttype, datum].filter(Boolean).join(' · ');
+    return `<div class="otd-card ${s.cls}" onclick="openBouwer('${d.id}')">
+      <div><div class="adres">${adres}</div><div class="sub">${sub}</div></div>
+      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span></div>
+    </div>`;
+  }).join('');
 }
 
 // ===== AUTH-LAAG (schakelbaar) =====
@@ -479,6 +566,7 @@ const AUTH = {
     document.body.classList.add('ingelogd');
     document.getElementById('overzicht').classList.add('actief');
     tegelsHtml(); render();
+    laadDossiers();
   },
   async logout(){
     if (sb) await sb.auth.signOut();
