@@ -229,7 +229,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
   <div id="link-modal" class="ov-modal">
     <div class="ov-box">
       <h3>Opdracht aangeboden ✓</h3>
-      <p>De opdracht staat klaar voor de klant. Stuur onderstaande link naar de opdrachtgever — binnenkort gaat dit automatisch per e-mail.</p>
+      <p id="link-uitleg">De opdracht staat klaar voor de klant.</p>
       <input id="link-veld" readonly onclick="this.select()">
       <div class="ov-knoppen">
         <button id="kopknop" class="ov-kop" onclick="kopieerLink()">Kopieer link</button>
@@ -758,8 +758,11 @@ async function biedAan(dossierId){
     });
     const j = await res.json();
     if(!res.ok) throw new Error(j.error||'fout');
-    const link = location.origin + '/klant.html?t=' + j.token;
+    const link = j.link || (location.origin + '/klant.html?t=' + j.token);
     document.getElementById('link-veld').value = link;
+    document.getElementById('link-uitleg').innerHTML = j.mailed
+      ? ('De opdracht is per e-mail verstuurd naar <strong>'+(j.mail_to||'de opdrachtgever')+'</strong>. Onderstaande link kun je eventueel zelf nog delen.')
+      : 'De opdracht staat klaar voor de klant. Stuur onderstaande link naar de opdrachtgever.';
     document.getElementById('link-modal').style.display = 'flex';
     laadDossiers();
   }catch(e){ alert('Aanbieden mislukt: '+(e.message||e)); }
