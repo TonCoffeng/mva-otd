@@ -240,10 +240,13 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
         </div>
         <div class="fg"><label>Object uit Realworks</label>
-          <select id="i_pand" onchange="kiesPand()"><option value="">— Laden…</option></select>
+          <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
+          <div id="i_pand_res" class="zoek-res"></div>
         </div>
         <div class="fg"><label>Objectadres</label><input id="i_obj" value="Iepenplein 48 te Amsterdam" oninput="render()"></div>
         <input type="hidden" id="i_rwid" value="">
+        <input type="hidden" id="i_plaats" value="">
+        <input type="hidden" id="i_pc" value="">
         <div class="fg-row">
           <div class="fg"><label>Bestemming</label><input id="i_best" value="wonen" oninput="render()"></div>
           <div class="fg"><label>In gebruik als</label><input id="i_gebr" value="appartement" oninput="render()"></div>
@@ -266,8 +269,34 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="fg"><label>Geboortedatum</label><input id="i_gbd" value="28-04-1994" oninput="render()"></div>
         </div>
         <div class="fg-row">
-          <div class="fg"><label>Herkomst relatie</label><input id="i_herkomst" placeholder="bijv. doorverwijzing, open huis"></div>
-          <div class="fg"><label>Reden opdracht</label><input id="i_reden" placeholder="bijv. doorstroming, echtscheiding"></div>
+          <div class="fg"><label>Herkomst relatie</label>
+            <select id="i_herkomst">
+              <option value="">— Kies —</option>
+              <option>Bestaande relatie</option>
+              <option>Eerdere klant</option>
+              <option>Doorverwijzing</option>
+              <option>Open huis</option>
+              <option>Funda</option>
+              <option>Website / online</option>
+              <option>Persoonlijk netwerk</option>
+              <option>Anders</option>
+            </select>
+          </div>
+          <div class="fg"><label>Reden opdracht</label>
+            <select id="i_reden">
+              <option value="">— Kies —</option>
+              <option>Doorstroming</option>
+              <option>Verhuizing regio</option>
+              <option>Gezinsuitbreiding</option>
+              <option>Kleiner / senioren wonen</option>
+              <option>Echtscheiding</option>
+              <option>Nalatenschap / overlijden</option>
+              <option>Financiële redenen</option>
+              <option>Samenwonen / relatie</option>
+              <option>Belegging</option>
+              <option>Anders</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -493,6 +522,8 @@ async function slaOpAlsConcept(){
       documenttype:'verkoop',
       makelaar_id: makelaarId,
       object_adres: obj,
+      object_plaats: v('i_plaats') || null,
+      object_postcode: v('i_pc') || null,
       realworks_object_id: v('i_rwid') || null,
       bestemming: v('i_best') || null,
       in_gebruik_als: v('i_gebr') || null,
@@ -571,9 +602,8 @@ function kiesRelatie(i){
 // ===== PANDEN (objectkeuze uit Realworks-aanbod) =====
 function _cap(s){ return (s||'').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase()); }
 async function laadPanden(){
-  const sel = document.getElementById('i_pand');
-  if(!sel || !sb) return;
-  sel.innerHTML = '<option value="">— Laden…</option>';
+  window._PANDEN = [];
+  if(!sb) return;
   try {
     const { data:{ session } } = await sb.auth.getSession();
     const res = await fetch('/.netlify/functions/otd-panden', {
@@ -581,25 +611,34 @@ async function laadPanden(){
     });
     const j = await res.json();
     if(!res.ok) throw new Error(j.error || 'fout');
-    const opts = ['<option value="">— Kies object uit Realworks —</option>'];
-    (j.panden || []).forEach(p => {
-      const adres = (p.adres||'').replace(/"/g,'&quot;');
-      opts.push(`<option value="${p.realworks_object_id}" data-adres="${adres}" data-postcode="${p.postcode||''}" data-plaats="${_cap(p.plaats)}">${p.adres||''} — ${_cap(p.plaats)}</option>`);
-    });
-    opts.push('<option value="__handmatig">Handmatig invullen…</option>');
-    sel.innerHTML = opts.join('');
-  } catch(e){
-    sel.innerHTML = '<option value="">Kon panden niet laden</option>';
-  }
+    window._PANDEN = (j.panden || []).map(p => ({
+      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||''
+    }));
+  } catch(e){ window._PANDEN = []; }
 }
-function kiesPand(){
-  const sel = document.getElementById('i_pand');
-  const opt = sel.options[sel.selectedIndex];
-  if(!opt || !opt.value || opt.value === '__handmatig'){ document.getElementById('i_rwid').value=''; return; }
-  const adres  = opt.getAttribute('data-adres')  || '';
-  const plaats = opt.getAttribute('data-plaats') || '';
-  document.getElementById('i_obj').value = adres + (plaats ? ' te ' + plaats : '');
-  document.getElementById('i_rwid').value = opt.value;
+function zoekPand(){
+  const q = document.getElementById('i_pandzoek').value.trim().toLowerCase();
+  const box = document.getElementById('i_pand_res');
+  if(q.length < 2){ box.innerHTML=''; box.style.display='none'; return; }
+  const lijst = (window._PANDEN||[]).filter(p =>
+    (p.adres+' '+p.plaats+' '+p.postcode).toLowerCase().includes(q)
+  ).slice(0,12);
+  box.style.display='block';
+  if(!lijst.length){ box.innerHTML = '<div class="zoek-item muted">Geen object gevonden</div>'; return; }
+  window._PANDRES = {};
+  box.innerHTML = lijst.map((p,i) => {
+    window._PANDRES[i] = p;
+    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats].filter(Boolean).join(' · ')+'</span></div>';
+  }).join('');
+}
+function kiesPandUit(i){
+  const p = (window._PANDRES||{})[i]; if(!p) return;
+  document.getElementById('i_obj').value = p.adres + (p.plaats ? ' te ' + p.plaats : '');
+  document.getElementById('i_rwid').value = p.rwid || '';
+  document.getElementById('i_plaats').value = p.plaats || '';
+  document.getElementById('i_pc').value = p.postcode || '';
+  document.getElementById('i_pandzoek').value = p.adres;
+  const box = document.getElementById('i_pand_res'); box.innerHTML=''; box.style.display='none';
   render();
 }
 
