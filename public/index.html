@@ -109,6 +109,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .btn-primary:active{transform:scale(.98);background:var(--oranje-light)}
 .btn-ghost{background:var(--grijs);color:var(--navy)}
 .btn-verstuur{background:var(--groen);color:#fff}
+.btn-opslaan{background:var(--navy);color:#fff;margin-right:auto}
 
 /* LIVE PREVIEW (A4) */
 .a4{background:#fff;width:100%;max-width:430px;box-shadow:0 8px 30px rgba(0,0,0,.3);border-radius:3px;padding:30px 32px;font-size:9px;line-height:1.45;color:#222;min-height:600px}
@@ -235,6 +236,9 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <div class="veld-sec actief" data-sec="0">
         <div class="sec-h">Object &amp; opdrachtgever</div>
         <div class="sec-p">Haal op uit Realworks of vul handmatig in.</div>
+        <div class="fg" id="fg_makelaar" style="display:none"><label>Opdracht namens makelaar</label>
+          <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
+        </div>
         <div class="fg"><label>Object uit Realworks</label>
           <select id="i_pand" onchange="kiesPand()"><option value="">— Laden…</option></select>
         </div>
@@ -313,6 +317,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       </div>
 
       <div class="nav-knoppen">
+        <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan">💾 Opslaan als concept</button>
         <button class="btn btn-ghost" onclick="vorige()" id="btn-vorige" style="display:none">‹ Vorige</button>
         <button class="btn btn-primary" onclick="volgende()" id="btn-volgende">Volgende ›</button>
         <button class="btn btn-verstuur" onclick="alert('Demo: hier gaat de OTD via Signhost ter ondertekening.')" id="btn-verstuur" style="display:none">Verstuur ter ondertekening ✍</button>
@@ -437,7 +442,7 @@ function openBouwer(dossierId){
   document.getElementById('bouwer').classList.add('actief');
   document.getElementById('hdr-titel').textContent="Nieuwe OTD";
   document.getElementById('hdr-badge').textContent="Verkoop";
-  ganaarStap(0); tegelsHtml(); render(); laadPanden(); window.scrollTo(0,0);
+  ganaarStap(0); tegelsHtml(); render(); laadPanden(); laadMakelaarKeuze(); window.scrollTo(0,0);
 }
 function naarOverzicht(){
   document.getElementById('bouwer').classList.remove('actief');
@@ -447,6 +452,77 @@ function naarOverzicht(){
 }
 function mobPreview(open){
   document.getElementById('preview-wrap').classList.toggle('mob-open',open);
+}
+
+// ===== OPSLAAN (concept wegschrijven) =====
+let _eigenMakelaarId = null;
+async function laadMakelaarKeuze(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const res = await fetch('/.netlify/functions/otd-opslaan', { headers:{ Authorization:'Bearer '+session.access_token } });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    _eigenMakelaarId = j.eigen_makelaar_id || null;
+    const fg = document.getElementById('fg_makelaar');
+    const sel = document.getElementById('i_makelaar');
+    if(j.is_directie){
+      sel.innerHTML = '<option value="">— Kies makelaar —</option>' +
+        (j.makelaars||[]).map(m=>'<option value="'+m.id+'">'+(m.naam||m.entiteit_naam||m.id)+'</option>').join('');
+      fg.style.display='';
+    } else {
+      fg.style.display='none';
+    }
+  }catch(e){ /* stil — bij opslaan komt een nette melding indien nodig */ }
+}
+async function slaOpAlsConcept(){
+  const obj = v('i_obj').trim();
+  if(!obj){ alert('Vul minimaal een objectadres in.'); return; }
+  const fgMak = document.getElementById('fg_makelaar');
+  let makelaarId = null;
+  if(fgMak && fgMak.style.display !== 'none'){
+    makelaarId = document.getElementById('i_makelaar').value;
+    if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return; }
+  }
+  const btn = document.getElementById('btn-opslaan');
+  const oud = btn.textContent; btn.disabled = true; btn.textContent = 'Opslaan…';
+  try{
+    const nu = new Date();
+    const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
+    const { data:{ session } } = await sb.auth.getSession();
+    const payload = {
+      documenttype:'verkoop',
+      makelaar_id: makelaarId,
+      object_adres: obj,
+      realworks_object_id: v('i_rwid') || null,
+      bestemming: v('i_best') || null,
+      in_gebruik_als: v('i_gebr') || null,
+      courtage_type: state.court==='vast' ? 'vast_bedrag' : 'percentage',
+      courtage_pct: v('i_pct'),
+      courtage_vast: v('i_vast'),
+      vraagprijs: v('i_vp'),
+      datum_opdracht: vandaag,
+      cloze_id: v('i_cloze') || null,
+      herkomst: v('i_herkomst') || null,
+      reden: v('i_reden') || null,
+      opdrachtgever: {
+        voornamen: v('i_vn') || null, achternaam: v('i_an') || null,
+        email: v('i_em') || null, telefoon: v('i_tel') || null,
+        geboorteplaats: v('i_gbp') || null, geboortedatum: v('i_gbd') || null
+      }
+    };
+    const res = await fetch('/.netlify/functions/otd-opslaan', {
+      method:'POST',
+      headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'opslaan faalde');
+    btn.textContent = 'Opgeslagen ✓';
+    setTimeout(naarOverzicht, 600);
+  }catch(e){
+    alert('Opslaan mislukt: '+(e.message||e));
+    btn.disabled = false; btn.textContent = oud;
+  }
 }
 
 // ===== RELATIES (opdrachtgever zoeken in Cloze) =====
