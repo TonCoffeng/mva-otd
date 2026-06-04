@@ -49,6 +49,16 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .otd-card .right{text-align:right;flex-shrink:0}
 .bedrag{font-size:15px;font-weight:700;color:var(--navy)}
 .chip{font-size:11px;padding:3px 11px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block;margin-top:4px}
+.kaart-knop{margin-top:8px;background:var(--oranje);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.kaart-knop:hover{filter:brightness(.95)}
+.ov-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;padding:18px}
+.ov-box{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.ov-box h3{margin:0 0 6px;color:var(--navy);font-size:18px}
+.ov-box p{margin:0 0 14px;color:var(--grijs-tekst);font-size:14px}
+.ov-box input{width:100%;border:1.5px solid var(--grijs-mid);border-radius:9px;padding:11px;font-size:13px;background:#f8fafc;margin-bottom:14px}
+.ov-knoppen{display:flex;gap:10px}
+.ov-kop{flex:1;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:12px;font-weight:700;cursor:pointer}
+.ov-sluit{background:#fff;color:var(--navy);border:1.5px solid var(--grijs-mid);border-radius:9px;padding:12px 18px;font-weight:700;cursor:pointer}
 .chip-concept{background:#fef3c7;color:#92400e} .chip-aangeboden{background:#dbeafe;color:#1e40af} .chip-getekend{background:#d1fae5;color:#065f46}
 
 .fab{position:fixed;right:20px;bottom:22px;background:var(--oranje);color:#fff;border:none;border-radius:30px;padding:15px 22px;font-size:15px;font-weight:700;font-family:inherit;box-shadow:0 6px 18px rgba(232,80,10,.4);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform .12s,background .2s;z-index:50}
@@ -215,6 +225,18 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
   <div id="dossier-lijst"></div>
 
   <button class="fab" onclick="openBouwer()">＋ Nieuwe OTD</button>
+
+  <div id="link-modal" class="ov-modal">
+    <div class="ov-box">
+      <h3>Opdracht aangeboden ✓</h3>
+      <p>De opdracht staat klaar voor de klant. Stuur onderstaande link naar de opdrachtgever — binnenkort gaat dit automatisch per e-mail.</p>
+      <input id="link-veld" readonly onclick="this.select()">
+      <div class="ov-knoppen">
+        <button id="kopknop" class="ov-kop" onclick="kopieerLink()">Kopieer link</button>
+        <button class="ov-sluit" onclick="sluitLinkModal()">Sluiten</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ============ BOUWER ============ -->
@@ -243,13 +265,13 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
           <div id="i_pand_res" class="zoek-res"></div>
         </div>
-        <div class="fg"><label>Objectadres</label><input id="i_obj" value="Iepenplein 48 te Amsterdam" oninput="render()"></div>
+        <div class="fg"><label>Objectadres</label><input id="i_obj" oninput="render()"></div>
         <input type="hidden" id="i_rwid" value="">
         <input type="hidden" id="i_plaats" value="">
         <input type="hidden" id="i_pc" value="">
         <div class="fg-row">
-          <div class="fg"><label>Bestemming</label><input id="i_best" value="wonen" oninput="render()"></div>
-          <div class="fg"><label>In gebruik als</label><input id="i_gebr" value="appartement" oninput="render()"></div>
+          <div class="fg"><label>Bestemming</label><input id="i_best" oninput="render()"></div>
+          <div class="fg"><label>In gebruik als</label><input id="i_gebr" oninput="render()"></div>
         </div>
         <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
           <input id="i_zoek" placeholder="Typ naam of e-mail…" autocomplete="off" oninput="zoekRelatie()">
@@ -257,16 +279,16 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         </div>
         <input type="hidden" id="i_cloze" value="">
         <div class="fg-row">
-          <div class="fg"><label>Voornaam</label><input id="i_vn" value="Jan" oninput="render()"></div>
-          <div class="fg"><label>Achternaam</label><input id="i_an" value="Herfkens" oninput="render()"></div>
+          <div class="fg"><label>Voornaam</label><input id="i_vn" oninput="render()"></div>
+          <div class="fg"><label>Achternaam</label><input id="i_an" oninput="render()"></div>
         </div>
         <div class="fg-row">
-          <div class="fg"><label>E-mail opdrachtgever</label><input id="i_em" value="janherfkens@gmail.com" oninput="render()"></div>
+          <div class="fg"><label>E-mail opdrachtgever</label><input id="i_em" oninput="render()"></div>
           <div class="fg"><label>Telefoon</label><input id="i_tel" value="" oninput="render()"></div>
         </div>
         <div class="fg-row">
-          <div class="fg"><label>Geboorteplaats</label><input id="i_gbp" value="Haarlem" oninput="render()"></div>
-          <div class="fg"><label>Geboortedatum</label><input id="i_gbd" value="28-04-1994" oninput="render()"></div>
+          <div class="fg"><label>Geboorteplaats</label><input id="i_gbp" oninput="render()"></div>
+          <div class="fg"><label>Geboortedatum</label><input id="i_gbd" oninput="render()"></div>
         </div>
         <div class="fg-row">
           <div class="fg"><label>Herkomst relatie</label>
@@ -309,9 +331,9 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="ckeuze aan" data-ct="pct" onclick="kiesCourtage('pct')">Percentage</div>
           <div class="ckeuze" data-ct="vast" onclick="kiesCourtage('vast')">Vast bedrag</div>
         </div>
-        <div class="fg" id="fg_pct"><label>Percentage (incl. BTW)</label><input id="i_pct" value="1,50" oninput="render()"></div>
-        <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag incl. BTW (€)</label><input id="i_vast" value="2.750" oninput="render()"></div>
-        <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" value="475.000" oninput="render()"></div>
+        <div class="fg" id="fg_pct"><label>Percentage (incl. BTW)</label><input id="i_pct" oninput="render()"></div>
+        <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag incl. BTW (€)</label><input id="i_vast" oninput="render()"></div>
+        <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="render()"></div>
         <div class="fg"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
         <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
@@ -693,12 +715,40 @@ function renderDossiers(json){
     const adres = [d.object_adres, d.object_plaats].filter(Boolean).join(', ') || 'Onbekend object';
     const datum = d.datum_opdracht ? d.datum_opdracht.split('-').reverse().join('-') : '';
     const sub = [d.opdrachtgever || 'Nog geen opdrachtgever', d.documenttype, datum].filter(Boolean).join(' · ');
+    const aanbiedKnop = (d.status==='concept')
+      ? `<button class="kaart-knop" onclick="event.stopPropagation();biedAan('${d.id}')">Aanbieden aan klant ›</button>`
+      : '';
     return `<div class="otd-card ${s.cls}" onclick="openBouwer('${d.id}')">
       <div><div class="adres">${adres}</div><div class="sub">${sub}</div></div>
-      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span></div>
+      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span>${aanbiedKnop}</div>
     </div>`;
   }).join('');
 }
+
+async function biedAan(dossierId){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const res = await fetch('/.netlify/functions/otd-aanbieden',{
+      method:'POST',
+      headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ dossier_id: dossierId })
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    const link = location.origin + '/klant.html?t=' + j.token;
+    document.getElementById('link-veld').value = link;
+    document.getElementById('link-modal').style.display = 'flex';
+    laadDossiers();
+  }catch(e){ alert('Aanbieden mislukt: '+(e.message||e)); }
+}
+function kopieerLink(){
+  const inp = document.getElementById('link-veld');
+  inp.select();
+  const klaar = ()=>{ const b=document.getElementById('kopknop'); const o=b.textContent; b.textContent='Gekopieerd ✓'; setTimeout(()=>b.textContent=o,1500); };
+  if(navigator.clipboard){ navigator.clipboard.writeText(inp.value).then(klaar).catch(()=>{ try{document.execCommand('copy');klaar();}catch(e){} }); }
+  else { try{document.execCommand('copy');klaar();}catch(e){} }
+}
+function sluitLinkModal(){ document.getElementById('link-modal').style.display='none'; }
 
 // ===== AUTH-LAAG (schakelbaar) =====
 // Identiteit komt uit het centrale Leadpool-project. Deze laag is bewust
