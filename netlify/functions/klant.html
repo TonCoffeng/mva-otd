@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opdracht tot dienstverlening — MakelaarsVan Amsterdam</title>
+<style>
+  :root{ --navy:#1b2a4a; --oranje:#ea580c; --groen:#16a34a; --grijs:#64748b; --lijn:#e6e9f0; --bg:#f4f6fa; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2a40;line-height:1.5}
+  .top{background:var(--navy);color:#fff;padding:18px 20px}
+  .top .merk{font-weight:800;letter-spacing:.5px;font-size:15px;line-height:1.15}
+  .top .merk span{font-weight:400;opacity:.85}
+  .wrap{max-width:680px;margin:0 auto;padding:22px 16px 60px}
+  .doc{background:#fff;border:1px solid var(--lijn);border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(20,30,60,.06)}
+  .doc-h{padding:22px 24px;border-bottom:1px solid var(--lijn)}
+  .doc-h h1{margin:0;font-size:19px;color:var(--navy)}
+  .doc-h p{margin:4px 0 0;color:var(--grijs);font-size:13.5px}
+  .sec{padding:18px 24px;border-bottom:1px solid var(--lijn)}
+  .sec:last-of-type{border-bottom:none}
+  .sec h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--oranje)}
+  .rij{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:14.5px}
+  .rij .k{color:var(--grijs);flex-shrink:0}
+  .rij .v{text-align:right;font-weight:600;color:#1f2a40}
+  .bijz{font-size:14px;color:#33415c;white-space:pre-wrap}
+  .acties{padding:22px 24px;background:#fafbfd}
+  .acties p{margin:0 0 14px;font-size:14px;color:var(--grijs)}
+  .knoprij{display:flex;gap:12px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;border:none;border-radius:10px;padding:14px 20px;cursor:pointer;flex:1;min-width:150px}
+  .akk{background:var(--groen);color:#fff}
+  .opm{background:#fff;color:var(--navy);border:1.5px solid var(--lijn)}
+  button:disabled{opacity:.55;cursor:default}
+  #opmblok{margin-top:14px;display:none}
+  textarea{width:100%;border:1.5px solid var(--lijn);border-radius:10px;padding:12px;font:inherit;min-height:90px;resize:vertical}
+  .melding{padding:40px 24px;text-align:center}
+  .melding .ico{font-size:34px}
+  .melding h2{color:var(--navy);margin:10px 0 6px;text-transform:none;letter-spacing:0;font-size:18px}
+  .melding p{color:var(--grijs);margin:0}
+  .laad{padding:50px 24px;text-align:center;color:var(--grijs)}
+  .voet{text-align:center;color:#94a3b8;font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+  <div class="top"><div class="merk">MAKELAARSVAN<br><span>AMSTERDAM</span></div></div>
+  <div class="wrap">
+    <div id="laad" class="laad">Document laden…</div>
+    <div id="doc" class="doc" style="display:none"></div>
+    <div class="voet">Dit document is u toegestuurd door uw makelaar. Vragen? Neem gerust contact op.</div>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('t') || '';
+const euro = n => (n==null||n==='') ? null : '€ ' + Number(n).toLocaleString('nl-NL');
+const esc = s => (s==null?'':String(s)).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function courtageTekst(d){
+  if(d.courtage_type==='percentage' && d.courtage_pct_incl!=null)
+    return String(d.courtage_pct_incl).replace('.',',')+'% incl. btw van de verkoopprijs';
+  if(d.courtage_vast_bedrag!=null)
+    return euro(d.courtage_vast_bedrag)+' incl. btw (vast)';
+  return '—';
+}
+function naamVan(o){ return [o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' '); }
+function datumNL(s){ if(!s) return null; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m? m[3]+'-'+m[2]+'-'+m[1] : s; }
+
+async function laad(){
+  if(!TOKEN){ return toonMelding('⚠️','Ongeldige link','Er ontbreekt een code in de link.'); }
+  try{
+    const res = await fetch('/.netlify/functions/otd-klant?t='+encodeURIComponent(TOKEN));
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    render(j);
+  }catch(e){ toonMelding('🔒','Link niet geldig', (e.message||'Deze link is verlopen of onjuist.')); }
+}
+
+function rij(k,v){ return v==null||v===''? '' : '<div class="rij"><span class="k">'+k+'</span><span class="v">'+esc(v)+'</span></div>'; }
+
+function render(j){
+  const d = j.dossier;
+  const og = j.opdrachtgevers || [];
+  const m = j.makelaar || {};
+  const adres = [d.object_adres, [d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const titel = d.documenttype==='aankoop' ? 'Opdracht tot dienstverlening — aankoop' : 'Opdracht tot dienstverlening — verkoop';
+
+  let html = '<div class="doc-h"><h1>'+esc(titel)+'</h1><p>'+(m.entiteit_naam? esc(m.entiteit_naam) : 'MakelaarsVan Amsterdam')+(d.datum_opdracht? ' · '+datumNL(d.datum_opdracht):'')+'</p></div>';
+
+  html += '<div class="sec"><h2>Object</h2>'
+    + rij('Adres', adres)
+    + rij('Bestemming', d.bestemming)
+    + rij('In gebruik als', d.in_gebruik_als)
+    + rij('Vraagprijs', euro(d.vraagprijs)) + '</div>';
+
+  html += '<div class="sec"><h2>Opdrachtgever'+(og.length>1?'s':'')+'</h2>'
+    + (og.length? og.map(o=>rij(naamVan(o)||'—', o.email||o.telefoon_mobiel||'')).join('') : '<div class="rij"><span class="k">—</span></div>')
+    + '</div>';
+
+  html += '<div class="sec"><h2>Courtage &amp; voorwaarden</h2>'
+    + rij('Courtage', courtageTekst(d))
+    + rij('Looptijd', d.looptijd) + '</div>';
+
+  if(d.bijzonderheden){
+    html += '<div class="sec"><h2>Bijzonderheden</h2><div class="bijz">'+esc(d.bijzonderheden)+'</div></div>';
+  }
+
+  html += '<div class="acties" id="acties">'
+    + '<p>Bekijk de opdracht hierboven rustig door. Klopt alles? Geef dan uw akkoord. Heeft u nog een opmerking of wijziging, laat het ons weten.</p>'
+    + '<div class="knoprij">'
+    + '<button class="akk" onclick="reageer(\'akkoord\')">Akkoord</button>'
+    + '<button class="opm" onclick="toonOpm()">Opmerking plaatsen</button>'
+    + '</div>'
+    + '<div id="opmblok"><textarea id="opmtekst" placeholder="Uw opmerking of gewenste wijziging…"></textarea>'
+    + '<div class="knoprij" style="margin-top:10px"><button class="opm" onclick="reageer(\'opmerking\')">Versturen</button></div></div>'
+    + '</div>';
+
+  document.getElementById('laad').style.display='none';
+  const doc = document.getElementById('doc'); doc.innerHTML = html; doc.style.display='';
+}
+
+function toonOpm(){ document.getElementById('opmblok').style.display='block'; }
+
+async function reageer(actie){
+  const acties = document.getElementById('acties');
+  acties.querySelectorAll('button').forEach(b=>b.disabled=true);
+  let opmerking = '';
+  if(actie==='opmerking'){
+    opmerking = document.getElementById('opmtekst').value.trim();
+    if(!opmerking){ alert('Vul eerst uw opmerking in.'); acties.querySelectorAll('button').forEach(b=>b.disabled=false); return; }
+  }
+  try{
+    const res = await fetch('/.netlify/functions/otd-klant?t='+encodeURIComponent(TOKEN),{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({actie, opmerking})
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    if(actie==='akkoord') toonMelding('✅','Bedankt voor uw akkoord','Uw makelaar maakt de opdracht klaar voor ondertekening. U ontvangt daarvoor nog een apart bericht.');
+    else toonMelding('📝','Opmerking ontvangen','Uw makelaar heeft uw opmerking ontvangen en neemt contact met u op.');
+  }catch(e){
+    alert('Er ging iets mis: '+(e.message||e));
+    acties.querySelectorAll('button').forEach(b=>b.disabled=false);
+  }
+}
+
+function toonMelding(ico,titel,tekst){
+  document.getElementById('laad').style.display='none';
+  const doc = document.getElementById('doc');
+  doc.innerHTML = '<div class="melding"><div class="ico">'+ico+'</div><h2>'+esc(titel)+'</h2><p>'+esc(tekst)+'</p></div>';
+  doc.style.display='';
+}
+
+laad();
+</script>
+</body>
+</html>
