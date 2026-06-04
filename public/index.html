@@ -166,6 +166,14 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
   .btn-uitloggen{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
   .btn-uitloggen:hover{background:rgba(255,255,255,.25)}
   .header-rechts{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .zoek-res{background:#fff;border:1px solid var(--grijs-mid);border-radius:8px;margin-top:4px;max-height:230px;overflow-y:auto;display:none;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+  .zoek-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef0f5;display:flex;flex-direction:column;gap:1px}
+  .zoek-item:last-child{border-bottom:none}
+  .zoek-item:hover{background:#f3f5fa}
+  .zoek-item.muted{color:var(--grijs-tekst);cursor:default}
+  .zoek-item strong{font-size:13.5px;color:var(--navy);font-weight:600}
+  .zoek-sub{font-size:12px;color:var(--grijs-tekst)}
+  .zoek-vrij{color:var(--oranje);font-weight:600}
 </style>
 
 <div id="login-screen">
@@ -236,14 +244,26 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="fg"><label>Bestemming</label><input id="i_best" value="wonen" oninput="render()"></div>
           <div class="fg"><label>In gebruik als</label><input id="i_gebr" value="appartement" oninput="render()"></div>
         </div>
+        <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
+          <input id="i_zoek" placeholder="Typ naam of e-mail…" autocomplete="off" oninput="zoekRelatie()">
+          <div id="i_zoek_res" class="zoek-res"></div>
+        </div>
+        <input type="hidden" id="i_cloze" value="">
         <div class="fg-row">
           <div class="fg"><label>Voornaam</label><input id="i_vn" value="Jan" oninput="render()"></div>
           <div class="fg"><label>Achternaam</label><input id="i_an" value="Herfkens" oninput="render()"></div>
         </div>
-        <div class="fg"><label>E-mail opdrachtgever</label><input id="i_em" value="janherfkens@gmail.com" oninput="render()"></div>
+        <div class="fg-row">
+          <div class="fg"><label>E-mail opdrachtgever</label><input id="i_em" value="janherfkens@gmail.com" oninput="render()"></div>
+          <div class="fg"><label>Telefoon</label><input id="i_tel" value="" oninput="render()"></div>
+        </div>
         <div class="fg-row">
           <div class="fg"><label>Geboorteplaats</label><input id="i_gbp" value="Haarlem" oninput="render()"></div>
           <div class="fg"><label>Geboortedatum</label><input id="i_gbd" value="28-04-1994" oninput="render()"></div>
+        </div>
+        <div class="fg-row">
+          <div class="fg"><label>Herkomst relatie</label><input id="i_herkomst" placeholder="bijv. doorverwijzing, open huis"></div>
+          <div class="fg"><label>Reden opdracht</label><input id="i_reden" placeholder="bijv. doorstroming, echtscheiding"></div>
         </div>
       </div>
 
@@ -427,6 +447,49 @@ function naarOverzicht(){
 }
 function mobPreview(open){
   document.getElementById('preview-wrap').classList.toggle('mob-open',open);
+}
+
+// ===== RELATIES (opdrachtgever zoeken in Cloze) =====
+let _zoekTimer = null;
+function zoekRelatie(){
+  clearTimeout(_zoekTimer);
+  const q = document.getElementById('i_zoek').value.trim();
+  const box = document.getElementById('i_zoek_res');
+  if(q.length < 2){ box.innerHTML=''; box.style.display='none'; return; }
+  _zoekTimer = setTimeout(async () => {
+    box.style.display='block';
+    box.innerHTML = '<div class="zoek-item muted">Zoeken…</div>';
+    try {
+      const { data:{ session } } = await sb.auth.getSession();
+      const res = await fetch('/.netlify/functions/otd-relaties?q=' + encodeURIComponent(q), {
+        headers: { Authorization: 'Bearer ' + session.access_token }
+      });
+      const j = await res.json();
+      if(!res.ok) throw new Error(j.error || 'fout');
+      const rel = j.relaties || [];
+      window._REL = {};
+      if(!rel.length){ box.innerHTML = '<div class="zoek-item muted">Geen relaties gevonden</div>'; return; }
+      box.innerHTML = rel.map((r,i) => {
+        window._REL[i] = r;
+        const vrij = r.eigenaar ? '' : ' <span class="zoek-vrij">· vrij</span>';
+        const sub = (r.email || r.telefoon || '') + vrij;
+        return '<div class="zoek-item" onclick="kiesRelatie('+i+')"><strong>'+(r.naam||'(naamloos)')+'</strong><span class="zoek-sub">'+sub+'</span></div>';
+      }).join('');
+    } catch(e){
+      box.innerHTML = '<div class="zoek-item muted">Kon niet zoeken: '+(e.message||e)+'</div>';
+    }
+  }, 350);
+}
+function kiesRelatie(i){
+  const r = (window._REL||{})[i]; if(!r) return;
+  const parts = (r.naam||'').trim().split(/\s+/);
+  const vn = parts.shift() || '';
+  const an = parts.join(' ');
+  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.value = val; };
+  set('i_vn', vn); set('i_an', an); set('i_em', r.email||''); set('i_tel', r.telefoon||'');
+  set('i_cloze', r.cloze_id||''); set('i_zoek', r.naam||'');
+  const box = document.getElementById('i_zoek_res'); box.innerHTML=''; box.style.display='none';
+  render();
 }
 
 // ===== PANDEN (objectkeuze uit Realworks-aanbod) =====
