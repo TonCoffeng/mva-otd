@@ -371,7 +371,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan">💾 Opslaan als concept</button>
         <button class="btn btn-ghost" onclick="vorige()" id="btn-vorige" style="display:none">‹ Vorige</button>
         <button class="btn btn-primary" onclick="volgende()" id="btn-volgende">Volgende ›</button>
-        <button class="btn btn-verstuur" onclick="alert('Demo: hier gaat de OTD via Signhost ter ondertekening.')" id="btn-verstuur" style="display:none">Verstuur ter ondertekening ✍</button>
+        <button class="btn btn-verstuur" onclick="slaOpEnBied()" id="btn-verstuur" style="display:none">Opslaan &amp; aanbieden ›</button>
       </div>
     </div>
 
@@ -525,55 +525,78 @@ async function laadMakelaarKeuze(){
     }
   }catch(e){ /* stil — bij opslaan komt een nette melding indien nodig */ }
 }
-async function slaOpAlsConcept(){
+function _verzamelPayload(){
+  const nu = new Date();
+  const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
+  return {
+    documenttype:'verkoop',
+    makelaar_id: null,
+    object_adres: v('i_obj').trim(),
+    object_plaats: v('i_plaats') || null,
+    object_postcode: v('i_pc') || null,
+    realworks_object_id: v('i_rwid') || null,
+    bestemming: v('i_best') || null,
+    in_gebruik_als: v('i_gebr') || null,
+    courtage_type: state.court==='vast' ? 'vast_bedrag' : 'percentage',
+    courtage_pct: v('i_pct'),
+    courtage_vast: v('i_vast'),
+    vraagprijs: v('i_vp'),
+    datum_opdracht: vandaag,
+    cloze_id: v('i_cloze') || null,
+    herkomst: v('i_herkomst') || null,
+    reden: v('i_reden') || null,
+    opdrachtgever: {
+      voornamen: v('i_vn') || null, achternaam: v('i_an') || null,
+      email: v('i_em') || null, telefoon: v('i_tel') || null,
+      geboorteplaats: v('i_gbp') || null, geboortedatum: v('i_gbd') || null
+    }
+  };
+}
+async function _slaOpConcept(){
   const obj = v('i_obj').trim();
-  if(!obj){ alert('Vul minimaal een objectadres in.'); return; }
+  if(!obj){ alert('Vul minimaal een objectadres in.'); return null; }
   const fgMak = document.getElementById('fg_makelaar');
   let makelaarId = null;
   if(fgMak && fgMak.style.display !== 'none'){
     makelaarId = document.getElementById('i_makelaar').value;
-    if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return; }
+    if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return null; }
   }
+  const { data:{ session } } = await sb.auth.getSession();
+  const payload = _verzamelPayload();
+  payload.makelaar_id = makelaarId;
+  const res = await fetch('/.netlify/functions/otd-opslaan', {
+    method:'POST',
+    headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+  if(!res.ok) throw new Error(j.error||'opslaan faalde');
+  return j.dossier_id;
+}
+async function slaOpAlsConcept(){
   const btn = document.getElementById('btn-opslaan');
   const oud = btn.textContent; btn.disabled = true; btn.textContent = 'Opslaan…';
   try{
-    const nu = new Date();
-    const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
-    const { data:{ session } } = await sb.auth.getSession();
-    const payload = {
-      documenttype:'verkoop',
-      makelaar_id: makelaarId,
-      object_adres: obj,
-      object_plaats: v('i_plaats') || null,
-      object_postcode: v('i_pc') || null,
-      realworks_object_id: v('i_rwid') || null,
-      bestemming: v('i_best') || null,
-      in_gebruik_als: v('i_gebr') || null,
-      courtage_type: state.court==='vast' ? 'vast_bedrag' : 'percentage',
-      courtage_pct: v('i_pct'),
-      courtage_vast: v('i_vast'),
-      vraagprijs: v('i_vp'),
-      datum_opdracht: vandaag,
-      cloze_id: v('i_cloze') || null,
-      herkomst: v('i_herkomst') || null,
-      reden: v('i_reden') || null,
-      opdrachtgever: {
-        voornamen: v('i_vn') || null, achternaam: v('i_an') || null,
-        email: v('i_em') || null, telefoon: v('i_tel') || null,
-        geboorteplaats: v('i_gbp') || null, geboortedatum: v('i_gbd') || null
-      }
-    };
-    const res = await fetch('/.netlify/functions/otd-opslaan', {
-      method:'POST',
-      headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const j = await res.json();
-    if(!res.ok) throw new Error(j.error||'opslaan faalde');
+    const id = await _slaOpConcept();
+    if(!id){ btn.disabled = false; btn.textContent = oud; return; }
     btn.textContent = 'Opgeslagen ✓';
     setTimeout(naarOverzicht, 600);
   }catch(e){
     alert('Opslaan mislukt: '+(e.message||e));
+    btn.disabled = false; btn.textContent = oud;
+  }
+}
+async function slaOpEnBied(){
+  const btn = document.getElementById('btn-verstuur');
+  const oud = btn.textContent; btn.disabled = true; btn.textContent = 'Bezig…';
+  try{
+    const id = await _slaOpConcept();
+    if(!id){ btn.disabled = false; btn.textContent = oud; return; }
+    btn.disabled = false; btn.textContent = oud;
+    naarOverzicht();
+    await biedAan(id);
+  }catch(e){
+    alert('Mislukt: '+(e.message||e));
     btn.disabled = false; btn.textContent = oud;
   }
 }
