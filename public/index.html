@@ -101,15 +101,32 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .ckeuze.aan{border-color:var(--navy);background:var(--navy);color:#fff}
 
 /* producten */
-.prod-zoek{margin-bottom:12px}
-.prod-tegels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.prod-laden{color:var(--grijs-tekst);font-size:13px;padding:12px 2px}
+.prod-groep-kop{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;opacity:.65;margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.prod-groep-kop::after{content:"";flex:1;height:1px;background:var(--grijs-mid)}
+.prod-tegels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
 .prod-tegel{border:1.5px solid var(--grijs-mid);border-radius:10px;padding:11px 13px;cursor:pointer;transition:all .15s;background:#fff;position:relative}
 .prod-tegel:hover{border-color:var(--navy)}
 .prod-tegel.aan{border-color:var(--oranje);background:#fff7f3}
-.prod-tegel .pn{font-size:13px;font-weight:600;color:var(--navy);line-height:1.25}
+.prod-tegel.aan::before{content:"✓";position:absolute;top:7px;right:9px;color:var(--oranje);font-weight:800;font-size:13px}
+.prod-tegel .pn{font-size:13px;font-weight:600;color:var(--navy);line-height:1.25;padding-right:14px}
 .prod-tegel .pp{font-size:12px;color:var(--grijs-tekst);margin-top:3px}
 .prod-tegel.pakket .pn::after{content:" • pakket";color:var(--oranje);font-weight:600}
-.totaal-balk{background:var(--navy);color:#fff;border-radius:10px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-top:6px}
+/* catalogus (overzichtelijke lijst, per categorie) */
+.prod-zoek{margin:6px 0 4px}
+.prod-zoek input{width:100%}
+.prod-cat-kop{font-size:11.5px;font-weight:700;color:var(--grijs-tekst);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px}
+.prod-rij{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1.5px solid var(--grijs-mid);border-radius:9px;margin-bottom:6px;cursor:pointer;transition:border-color .12s,background .12s;background:#fff}
+.prod-rij:hover{border-color:var(--navy)}
+.prod-rij.aan{border-color:var(--oranje);background:#fff7f3}
+.prod-rij .rn{font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.25}
+.prod-rij .rn .rpakket{color:var(--oranje);font-weight:700}
+.prod-rij .rmeta{display:flex;align-items:center;gap:11px;flex-shrink:0}
+.prod-rij .rp{font-size:12px;color:var(--grijs-tekst);white-space:nowrap}
+.prod-rij .rcheck{width:23px;height:23px;border-radius:6px;border:1.6px solid var(--grijs-mid);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;background:#fff;transition:all .12s}
+.prod-rij.aan .rcheck{background:var(--oranje);border-color:var(--oranje)}
+.prod-geen{color:var(--grijs-tekst);font-size:13px;padding:14px 2px}
+.totaal-balk{background:var(--navy);color:#fff;border-radius:10px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-top:14px}
 .totaal-balk .t-lbl{font-size:13px;font-weight:600;opacity:.8}
 .totaal-balk .t-bedrag{font-size:18px}
 
@@ -361,9 +378,21 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <!-- stap 3 -->
       <div class="veld-sec" data-sec="3">
         <div class="sec-h">Woningpromotieplan</div>
-        <div class="sec-p">Selecteer pakketten en losse diensten.</div>
-        <div class="fg prod-zoek"><input placeholder="🔍 Zoek product of dienst…" oninput="filterProd(this.value)"></div>
-        <div class="prod-tegels" id="prod-tegels"></div>
+        <div class="sec-p">Veelgebruikte diensten staan klaar — tik om toe te voegen. Daaronder vind je de volledige catalogus.</div>
+
+        <div class="prod-laden" id="prod-laden">Producten laden…</div>
+
+        <div id="prod-veel-wrap" style="display:none">
+          <div class="prod-groep-kop" id="prod-veel-kop">Veelgebruikt</div>
+          <div class="prod-tegels" id="prod-veel"></div>
+        </div>
+
+        <div id="prod-cat-wrap" style="display:none">
+          <div class="prod-groep-kop">Volledige catalogus</div>
+          <div class="fg prod-zoek"><input id="prod-zoek" placeholder="🔍 Zoek in de catalogus…" oninput="filterCat(this.value)"></div>
+          <div id="prod-cat-lijst"></div>
+        </div>
+
         <div class="totaal-balk"><span class="t-lbl">Promotieplan totaal</span><span class="t-bedrag" id="prod-totaal">€ 0,00</span></div>
       </div>
 
@@ -387,33 +416,102 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 </div>
 
 <script>
-// ---- producten (subset, incl. snelkeuze-tegels + pakket) ----
-const PRODUCTEN = [
-  {n:"Compleet Pakket Makelaars van Amsterdam", p:750, pakket:true, items:["Kadastraal onderzoek","Zibber 360 virtual tour","Funda Compleet (1 jaar)","Dossierkosten","Zibber Verkooptekst","MvA Individuele Website","MvA visitekaartjes","3D Laserscannen","3D Floorplanner","Zibber Meetrapport","Zibber Vastgoedfotografie","Zibber Woningvideo","2D Floorplanner"], aan:true},
-  {n:"Media Pakket Basis", p:795, pakket:true, items:[], aan:false},
-  {n:"Funda Toppositie (per week)", p:60.50, aan:false},
-  {n:"Brochures 25 full color", p:239.58, aan:false},
-  {n:"Social Media Campagne 250", p:250, aan:false},
-  {n:"Buurtmailing geadresseerd", p:181.50, aan:false},
-  {n:"Te koop kaartjes (500 st)", p:129.47, aan:false},
-  {n:"Zibber Dronevideo", p:121, aan:false},
-];
+// ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
+const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
 const state={stap:0, court:'pct', t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
 
-function euro(n){return "€ "+n.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
-function tegelsHtml(filter=""){
-  const f=filter.toLowerCase();
-  document.getElementById('prod-tegels').innerHTML = PRODUCTEN
-    .map((p,i)=>({p,i}))
-    .filter(o=>o.p.n.toLowerCase().includes(f))
-    .map(o=>`<div class="prod-tegel ${o.p.pakket?'pakket':''} ${o.p.aan?'aan':''}" onclick="togProd(${o.i})">
-      <div class="pn">${o.p.n}</div><div class="pp">${euro(o.p.p)}</div></div>`).join("");
+const _naamVan  = p => (p.commerciele_naam || p.naam || '').trim();
+const _prijsVan = p => Number(p.prijs_incl_btw || 0);
+
+// welke makelaar is op dit moment actief (voor "automatisch leren")
+function huidigeMakelaarId(){
+  const fg = document.getElementById('fg_makelaar');
+  if(fg && fg.style.display!=='none'){ return (document.getElementById('i_makelaar').value||'').trim(); }
+  return _eigenMakelaarId || '';
 }
-function filterProd(v){tegelsHtml(v)}
-function togProd(i){PRODUCTEN[i].aan=!PRODUCTEN[i].aan; tegelsHtml(); render()}
 
-function prodTotaal(){return PRODUCTEN.filter(p=>p.aan).reduce((s,p)=>s+p.p,0)}
+async function laadProducten(){
+  const laden = document.getElementById('prod-laden');
+  try{
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const mk = huidigeMakelaarId();
+    const url = '/.netlify/functions/otd-producten' + (mk ? ('?makelaar='+encodeURIComponent(mk)) : '');
+    const res = await fetch(url, { headers:{ Authorization:'Bearer '+token } });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'laden faalde');
+    PROD.alle    = Array.isArray(j.producten) ? j.producten : [];
+    PROD.geleerd = Array.isArray(j.geleerd) ? j.geleerd : [];
+    PROD.geladen = true;
+    if(laden) laden.style.display='none';
+    document.getElementById('prod-veel-wrap').style.display='';
+    document.getElementById('prod-cat-wrap').style.display='';
+    renderVeelgebruikt(); renderCatalogus(''); render();
+  }catch(e){
+    if(laden){ laden.style.display=''; laden.textContent='Kon de producten niet laden. Probeer het later opnieuw.'; }
+  }
+}
+
+// veelgebruikte set: geleerd (indien historie) anders snelkeuze (KERN)
+function veelgebruikteProducten(){
+  if(PROD.geleerd.length){
+    const idx = Object.fromEntries(PROD.alle.map(p=>[p.id,p]));
+    const uit = PROD.geleerd.map(id=>idx[id]).filter(Boolean).slice(0,10);
+    if(uit.length) return uit;
+  }
+  return PROD.alle.filter(p=>p.snelkeuze!=null).sort((a,b)=>a.snelkeuze-b.snelkeuze);
+}
+
+function renderVeelgebruikt(){
+  const lijst = veelgebruikteProducten();
+  document.getElementById('prod-veel-kop').textContent =
+    PROD.geleerd.length ? 'Veelgebruikt — op basis van je eerdere opdrachten' : 'Veelgebruikt';
+  document.getElementById('prod-veel').innerHTML = lijst.map(p=>{
+    const aan = PROD.gekozen.has(p.id);
+    return `<div class="prod-tegel ${p.is_pakket?'pakket':''} ${aan?'aan':''}" onclick="togProduct('${p.id}')">
+      <div class="pn">${_naamVan(p)}</div><div class="pp">${euro(_prijsVan(p))}</div></div>`;
+  }).join('');
+}
+
+function renderCatalogus(filter){
+  const f = (filter||'').toLowerCase().trim();
+  const box = document.getElementById('prod-cat-lijst');
+  const items = PROD.alle.filter(p=>!f || _naamVan(p).toLowerCase().includes(f) || (p.categorie||'').toLowerCase().includes(f));
+  if(!items.length){ box.innerHTML='<div class="prod-geen">Geen producten gevonden.</div>'; return; }
+  const volg = ['Woningpromotie','Verkoopgereed maken van uw woning','Aanvullende diensten','Opstartkosten'];
+  const groepen = {};
+  items.forEach(p=>{ const c=p.categorie||'Overig'; (groepen[c]=groepen[c]||[]).push(p); });
+  const cats = Object.keys(groepen).sort((a,b)=>{
+    const ia=volg.indexOf(a), ib=volg.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  box.innerHTML = cats.map(c=>{
+    const rijen = groepen[c].map(p=>{
+      const aan = PROD.gekozen.has(p.id);
+      const pkt = p.is_pakket ? ' <span class="rpakket">• pakket</span>' : '';
+      return `<div class="prod-rij ${aan?'aan':''}" onclick="togProduct('${p.id}')">
+        <div class="rn">${_naamVan(p)}${pkt}</div>
+        <div class="rmeta"><span class="rp">${euro(_prijsVan(p))}</span><span class="rcheck">${aan?'✓':''}</span></div>
+      </div>`;
+    }).join('');
+    return `<div class="prod-cat-kop">${c}</div>${rijen}`;
+  }).join('');
+}
+
+function filterCat(v){ renderCatalogus(v); }
+
+function togProduct(id){
+  if(PROD.gekozen.has(id)) PROD.gekozen.delete(id); else PROD.gekozen.add(id);
+  renderVeelgebruikt();
+  const zoek = document.getElementById('prod-zoek');
+  renderCatalogus(zoek ? zoek.value : '');
+  render();
+}
+
+function gekozenProducten(){ return PROD.alle.filter(p=>PROD.gekozen.has(p.id)); }
+function prodTotaal(){ return gekozenProducten().reduce((s,p)=>s+_prijsVan(p),0); }
 
 function tog(k){state.t[k]=state.t[k]?0:1;
   document.querySelector(`[data-t="${k}"]`).classList.toggle('aan',!!state.t[k]); render()}
@@ -437,11 +535,10 @@ function render(){
   const comm=[['E-mail',state.t.c_email],['WhatsApp',state.t.c_wa],['SMS',state.t.c_sms],['Telefonisch',state.t.c_tel]]
     .filter(x=>x[1]).map(x=>x[0]).join(", ")||"—";
 
-  const pakketten = PRODUCTEN.filter(p=>p.aan);
-  let pkHtml = pakketten.map(p=>`
-      <div class="pv-pkrow"><span>${p.n}</span><span>${euro(p.p)}</span></div>
-      ${(p.items||[]).map(it=>`<div class="pv-pkitem">• ${it}</div>`).join("")}`).join("");
-  if(!pakketten.length) pkHtml=`<div class="pv-pkitem">Nog geen diensten geselecteerd.</div>`;
+  const gekozen = gekozenProducten();
+  let pkHtml = gekozen.map(p=>`
+      <div class="pv-pkrow"><span>${_naamVan(p)}</span><span>${euro(_prijsVan(p))}</span></div>`).join("");
+  if(!gekozen.length) pkHtml=`<div class="pv-pkitem">Nog geen diensten geselecteerd.</div>`;
 
   document.getElementById('a4').innerHTML=`
     <span class="preview-label">live preview</span>
@@ -487,13 +584,21 @@ function ganaarStap(n){
 function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
 function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 
-function openBouwer(dossierId){
+async function openBouwer(dossierId){
   window.HUIDIG_DOSSIER = dossierId || null;
   document.getElementById('overzicht').classList.remove('actief');
   document.getElementById('bouwer').classList.add('actief');
   document.getElementById('hdr-titel').textContent="Nieuwe OTD";
   document.getElementById('hdr-badge').textContent="Verkoop";
-  ganaarStap(0); tegelsHtml(); render(); laadPanden(); laadMakelaarKeuze(); window.scrollTo(0,0);
+  // selectie en laadstatus resetten voor een schone start
+  PROD.gekozen = new Set();
+  const laden = document.getElementById('prod-laden');
+  if(laden){ laden.style.display=''; laden.textContent='Producten laden…'; }
+  document.getElementById('prod-veel-wrap').style.display='none';
+  document.getElementById('prod-cat-wrap').style.display='none';
+  ganaarStap(0); render(); laadPanden(); window.scrollTo(0,0);
+  await laadMakelaarKeuze();   // zet eventueel _eigenMakelaarId
+  laadProducten();             // catalogus + (later) geleerde set voor deze makelaar
 }
 function naarOverzicht(){
   document.getElementById('bouwer').classList.remove('actief');
@@ -520,6 +625,7 @@ async function laadMakelaarKeuze(){
     if(j.is_directie){
       sel.innerHTML = '<option value="">— Kies makelaar —</option>' +
         (j.makelaars||[]).map(m=>'<option value="'+m.id+'">'+(m.naam||m.entiteit_naam||m.id)+'</option>').join('');
+      sel.onchange = ()=>{ if(PROD.geladen) laadProducten(); };
       fg.style.display='';
     } else {
       fg.style.display='none';
@@ -850,7 +956,7 @@ const AUTH = {
       HUIDIGE_GEBRUIKER.naam + ' · ' + HUIDIGE_GEBRUIKER.rol;
     document.body.classList.add('ingelogd');
     document.getElementById('overzicht').classList.add('actief');
-    tegelsHtml(); render();
+    render();
     laadDossiers();
   },
   async logout(){
