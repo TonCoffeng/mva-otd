@@ -82,7 +82,7 @@ exports.handler = async (event) => {
           '<p>' + aanhef + ',</p>' +
           '<p>Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.</p>' +
           '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#ea580c;color:#fff;text-decoration:none;padding:13px 26px;border-radius:9px;font-weight:bold;display:inline-block">Opdracht bekijken</a></p>' +
-          '<p style="font-size:13px;color:#64748b">Werkt de knop niet? Kopieer dan deze link in uw browser:<br>' + link + '</p>' +
+          '<p style="font-size:13px;color:#64748b">Werkt de knop niet? <a href="' + link + '" style="color:#ea580c;font-weight:bold">Open de opdracht voor ' + obj + '</a></p>' +
           '<p>Met vriendelijke groet,<br>' + makNaam + '</p>' +
           '</div></div>';
         const payload = {
