@@ -22,7 +22,7 @@ exports.handler = async (event) => {
     const shH = { Authorization:'APIKey '+SIGNHOST_API_KEY, Application:'APPKey '+SIGNHOST_APP_KEY };
 
     // 1. dossier ophalen
-    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,klant_token,signhost_transaction_id&klant_token=eq.'+encodeURIComponent(token)+'&limit=1',{headers:otdH});
+    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,klant_token,signhost_transaction_id,makelaar_id&klant_token=eq.'+encodeURIComponent(token)+'&limit=1',{headers:otdH});
     const dArr = dRes.ok ? await dRes.json() : [];
     const d = dArr[0];
     if(!d) return json(404,{error:'Deze link is niet (meer) geldig.'});
@@ -34,6 +34,14 @@ exports.handler = async (event) => {
     const og = ogArr[0];
     if(!og || !og.email) return json(400,{error:'Opdrachtgever heeft geen e-mailadres; ondertekenen kan niet starten.'});
     const naam = [og.voornamen,og.tussenvoegsels,og.achternaam].filter(Boolean).join(' ') || 'Opdrachtgever';
+
+    // makelaar ophalen (ontvanger van het getekende exemplaar)
+    let makelaarEmail = null;
+    if(d.makelaar_id){
+      const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=email&id=eq.'+d.makelaar_id,{headers:otdH});
+      const mArr = mRes.ok ? await mRes.json() : [];
+      if(mArr[0] && mArr[0].email) makelaarEmail = mArr[0].email;
+    }
 
     // 2. OTD-PDF ophalen via de bestaande otd-pdf-function
     const host = event.headers.host || 'otd-mva.netlify.app';
@@ -48,13 +56,19 @@ exports.handler = async (event) => {
         Email: og.email,
         SendSignRequest: false,           // geen aparte Signhost-mail; wij sturen direct door
         SignRequestMessage: 'Opdracht tot dienstverlening',
-        Verifications: [{ Type: 'Consent' }]
+        Language: 'nl-NL',
+        Verifications: [{ Type: 'Scribble', RequireHandsignature: true }]
       }],
       Reference: d.id,
       PostbackUrl: postbackUrl,
       DaysToExpire: 30,
-      SendEmailNotifications: false
+      Language: 'nl-NL',
+      SendEmailNotifications: true
     };
+    // ontvanger van het getekende exemplaar: het kantoor (de ondertekenaar krijgt zelf al een kopie)
+    const receivers = [];
+    if(makelaarEmail) receivers.push({ Email: makelaarEmail, Language:'nl-NL', Message:'Het getekende opdracht tot dienstverlening is bijgevoegd.' });
+    if(receivers.length) createBody.Receivers = receivers;
     const cRes = await fetch(SIGNHOST_BASE+'/transaction', {
       method:'POST',
       headers: Object.assign({}, shH, { 'Content-Type':'application/json', 'Accept':'application/json' }),
