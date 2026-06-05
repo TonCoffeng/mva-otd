@@ -104,9 +104,9 @@ function render(j){
   }
 
   html += '<div class="acties" id="acties">'
-    + '<p>Bekijk de opdracht hierboven rustig door. Klopt alles? Geef dan uw akkoord. Heeft u nog een opmerking of wijziging, laat het ons weten.</p>'
+    + '<p>Bekijk de opdracht hierboven rustig door. Klopt alles? Onderteken de opdracht dan digitaal. Heeft u nog een opmerking of wijziging, laat het ons dan eerst weten.</p>'
     + '<div class="knoprij">'
-    + '<button class="akk" onclick="reageer(\'akkoord\')">Akkoord</button>'
+    + '<button class="akk" onclick="naarOndertekenen()">Akkoord &amp; ondertekenen ›</button>'
     + '<button class="opm" onclick="toonOpm()">Opmerking plaatsen</button>'
     + '</div>'
     + '<div id="opmblok"><textarea id="opmtekst" placeholder="Uw opmerking of gewenste wijziging…"></textarea>'
@@ -118,6 +118,24 @@ function render(j){
 }
 
 function toonOpm(){ document.getElementById('opmblok').style.display='block'; }
+
+async function naarOndertekenen(){
+  const acties = document.getElementById('acties');
+  const akkBtn = acties.querySelector('.akk');
+  const origineel = akkBtn ? akkBtn.innerHTML : '';
+  acties.querySelectorAll('button').forEach(b=>b.disabled=true);
+  if(akkBtn) akkBtn.textContent = 'Bezig met klaarzetten…';
+  try{
+    const res = await fetch('/.netlify/functions/otd-ondertekenen?t='+encodeURIComponent(TOKEN),{ method:'POST' });
+    const j = await res.json();
+    if(!res.ok || !j.signUrl) throw new Error(j.error || 'kon ondertekenen niet starten');
+    window.location.href = j.signUrl;   // direct door naar het Signhost-tekenscherm
+  }catch(e){
+    alert('Ondertekenen kon niet starten: '+(e.message||e));
+    acties.querySelectorAll('button').forEach(b=>b.disabled=false);
+    if(akkBtn) akkBtn.innerHTML = origineel;
+  }
+}
 
 async function reageer(actie){
   const acties = document.getElementById('acties');
