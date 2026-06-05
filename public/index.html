@@ -509,8 +509,9 @@ function mobPreview(open){
 let _eigenMakelaarId = null;
 async function laadMakelaarKeuze(){
   try{
-    const { data:{ session } } = await sb.auth.getSession();
-    const res = await fetch('/.netlify/functions/otd-opslaan', { headers:{ Authorization:'Bearer '+session.access_token } });
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-opslaan', { headers:{ Authorization:'Bearer '+token } });
     const j = await res.json();
     if(!res.ok) throw new Error(j.error||'fout');
     _eigenMakelaarId = j.eigen_makelaar_id || null;
@@ -561,12 +562,13 @@ async function _slaOpConcept(){
     makelaarId = document.getElementById('i_makelaar').value;
     if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return null; }
   }
-  const { data:{ session } } = await sb.auth.getSession();
+  const token = await geldigeToken();
+  if(!token){ sessieVerlopen(); return null; }
   const payload = _verzamelPayload();
   payload.makelaar_id = makelaarId;
   const res = await fetch('/.netlify/functions/otd-opslaan', {
     method:'POST',
-    headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+    headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
   });
   const j = await res.json();
@@ -612,9 +614,10 @@ function zoekRelatie(){
     box.style.display='block';
     box.innerHTML = '<div class="zoek-item muted">Zoeken…</div>';
     try {
-      const { data:{ session } } = await sb.auth.getSession();
+      const token = await geldigeToken();
+      if(!token){ sessieVerlopen(); return; }
       const res = await fetch('/.netlify/functions/otd-relaties?q=' + encodeURIComponent(q), {
-        headers: { Authorization: 'Bearer ' + session.access_token }
+        headers: { Authorization: 'Bearer ' + token }
       });
       const j = await res.json();
       if(!res.ok) throw new Error(j.error || 'fout');
@@ -650,9 +653,10 @@ async function laadPanden(){
   window._PANDEN = [];
   if(!sb) return;
   try {
-    const { data:{ session } } = await sb.auth.getSession();
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
     const res = await fetch('/.netlify/functions/otd-panden', {
-      headers: { Authorization: 'Bearer ' + session.access_token }
+      headers: { Authorization: 'Bearer ' + token }
     });
     const j = await res.json();
     if(!res.ok) throw new Error(j.error || 'fout');
@@ -705,12 +709,13 @@ async function laadDossiers(){
   const lijst = document.getElementById('dossier-lijst');
   lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Dossiers laden…</div>';
   try {
-    const { data:{ session } } = await sb.auth.getSession();
-    if(!session) throw new Error('geen sessie');
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
     const res = await fetch('/.netlify/functions/otd-dossiers', {
-      headers: { Authorization: 'Bearer ' + session.access_token }
+      headers: { Authorization: 'Bearer ' + token }
     });
     const json = await res.json();
+    if(res.status === 401){ sessieVerlopen(); return; }
     if(!res.ok) throw new Error(json.error || ('HTTP '+res.status));
     renderDossiers(json);
   } catch(e){
@@ -750,10 +755,11 @@ function renderDossiers(json){
 
 async function biedAan(dossierId){
   try{
-    const { data:{ session } } = await sb.auth.getSession();
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
     const res = await fetch('/.netlify/functions/otd-aanbieden',{
       method:'POST',
-      headers:{ Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
       body: JSON.stringify({ dossier_id: dossierId })
     });
     const j = await res.json();
@@ -776,6 +782,27 @@ function kopieerLink(){
 }
 function sluitLinkModal(){ document.getElementById('link-modal').style.display='none'; }
 
+// ===== SESSIE-HELPERS =====
+// Haalt een geldig token op en ververst het als het bijna verloopt.
+// Geeft null terug als er geen bruikbare sessie (meer) is.
+async function geldigeToken(){
+  if(!sb) return null;
+  let { data:{ session } } = await sb.auth.getSession();
+  if(session && session.expires_at && (session.expires_at*1000 - Date.now()) < 60000){
+    try{ const r = await sb.auth.refreshSession(); if(r.data && r.data.session) session = r.data.session; else session = null; }
+    catch(e){ session = null; }
+  }
+  return session ? session.access_token : null;
+}
+function sessieVerlopen(){
+  HUIDIGE_GEBRUIKER = null;
+  document.body.classList.remove('ingelogd');
+  const ov = document.getElementById('overzicht'); if(ov) ov.classList.remove('actief');
+  const bw = document.getElementById('bouwer'); if(bw) bw.classList.remove('actief');
+  const f = document.getElementById('login-fout');
+  if(f) f.textContent = 'Je sessie is verlopen. Log opnieuw in.';
+}
+
 // ===== AUTH-LAAG (schakelbaar) =====
 // Identiteit komt uit het centrale Leadpool-project. Deze laag is bewust
 // geïsoleerd: omschakelen naar portal cross-app SSO is later één wijziging hier.
@@ -789,7 +816,11 @@ let HUIDIGE_GEBRUIKER = null;
 const AUTH = {
   async init(){
     sb = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.anonKey);
-    const { data:{ session } } = await sb.auth.getSession();
+    let { data:{ session } } = await sb.auth.getSession();
+    if(session && session.expires_at && (session.expires_at*1000 - Date.now()) < 60000){
+      try{ const r = await sb.auth.refreshSession(); session = (r.data && r.data.session) ? r.data.session : null; }
+      catch(e){ session = null; }
+    }
     if (session) await AUTH._naLogin(session);
   },
   async login(){
