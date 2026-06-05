@@ -60,8 +60,9 @@ exports.handler = async (event) => {
       headers: Object.assign({}, shH, { 'Content-Type':'application/json', 'Accept':'application/json' }),
       body: JSON.stringify(createBody)
     });
-    if(!cRes.ok){ const t=await cRes.text(); return json(502,{error:'Signhost transactie mislukt ('+cRes.status+'): '+t}); }
-    const trx = await cRes.json();
+    const cText = await cRes.text();
+    if(!cRes.ok) return json(502,{error:'Signhost: transactie aanmaken mislukt ('+cRes.status+'): '+cText.slice(0,300)});
+    let trx; try { trx = JSON.parse(cText); } catch(e){ return json(502,{error:'Signhost: transactie-antwoord onleesbaar ('+cRes.status+'): '+cText.slice(0,200)}); }
     const trxId = trx.Id;
     if(!trxId) return json(502,{error:'Signhost gaf geen transactie-id terug.'});
 
@@ -72,18 +73,27 @@ exports.handler = async (event) => {
       headers: Object.assign({}, shH, { 'Content-Type':'application/pdf' }),
       body: pdfBuf
     });
-    if(!fRes.ok){ const t=await fRes.text(); return json(502,{error:'Document uploaden naar Signhost mislukt ('+fRes.status+'): '+t}); }
+    if(!fRes.ok){ const t=await fRes.text(); return json(502,{error:'Signhost: document uploaden mislukt ('+fRes.status+'): '+t.slice(0,300)}); }
 
-    // 5. transactie starten -> SignUrl
+    // 5. transactie starten (antwoord mag leeg zijn — niet hard parsen)
     const sRes = await fetch(SIGNHOST_BASE+'/transaction/'+trxId+'/start', {
       method:'PUT',
       headers: Object.assign({}, shH, { 'Accept':'application/json' })
     });
-    if(!sRes.ok){ const t=await sRes.text(); return json(502,{error:'Signhost starten mislukt ('+sRes.status+'): '+t}); }
-    const started = await sRes.json();
-    const signer = (started.Signers && started.Signers[0]) || {};
-    const signUrl = signer.SignUrl;
-    if(!signUrl) return json(502,{error:'Signhost gaf geen tekenlink terug.'});
+    const sText = await sRes.text();
+    if(!sRes.ok) return json(502,{error:'Signhost: starten mislukt ('+sRes.status+'): '+sText.slice(0,300)});
+
+    // 6. SignUrl bepalen: eerst uit het start-antwoord, anders de transactie ophalen
+    let signUrl = null;
+    try { const st = sText ? JSON.parse(sText) : null; if(st && st.Signers && st.Signers[0]) signUrl = st.Signers[0].SignUrl; } catch(e){}
+    if(!signUrl){
+      const gRes = await fetch(SIGNHOST_BASE+'/transaction/'+trxId, { headers: Object.assign({}, shH, { 'Accept':'application/json' }) });
+      const gText = await gRes.text();
+      if(!gRes.ok) return json(502,{error:'Signhost: transactie ophalen mislukt ('+gRes.status+'): '+gText.slice(0,300)});
+      let gt = null; try { gt = JSON.parse(gText); } catch(e){}
+      if(gt && gt.Signers && gt.Signers[0]) signUrl = gt.Signers[0].SignUrl;
+    }
+    if(!signUrl) return json(502,{error:'Signhost gaf geen tekenlink (SignUrl) terug.'});
 
     // transactie-id opslaan (status blijft 'aangeboden' tot de webhook 'ondertekend' meldt)
     await fetch(OTD_URL+'/rest/v1/otd_dossiers?id=eq.'+encodeURIComponent(d.id), {
