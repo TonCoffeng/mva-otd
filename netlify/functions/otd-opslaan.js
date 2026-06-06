@@ -115,6 +115,22 @@ exports.handler = async (event) => {
       const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers',{method:'POST',headers:otdH,body:JSON.stringify(ogRow)});
       if(!ogRes.ok){ const t=await ogRes.text(); return json(500,{error:'Dossier opgeslagen, opdrachtgever faalde ('+ogRes.status+'): '+t, dossier_id:dossierId}); }
 
+      // regels (woningpromotieplan) — prijssnapshot server-side uit de catalogus
+      const prodIds = Array.isArray(body.producten) ? body.producten.filter(Boolean) : [];
+      if(prodIds.length){
+        const inList = prodIds.map(encodeURIComponent).join(',');
+        const pRes = await fetch(OTD_URL+'/rest/v1/otd_producten?select=id,prijs_incl_btw,categorie&id=in.('+inList+')',{headers:otdH});
+        const pArr = pRes.ok ? await pRes.json() : [];
+        const pMap = Object.fromEntries(pArr.map(p=>[p.id,p]));
+        const regels = prodIds
+          .filter(id=>pMap[id])
+          .map((id,i)=>({ dossier_id:dossierId, product_id:id, prijs_snapshot:pMap[id].prijs_incl_btw, sectie:pMap[id].categorie, volgorde:i }));
+        if(regels.length){
+          const rRes = await fetch(OTD_URL+'/rest/v1/otd_regels',{method:'POST',headers:otdH,body:JSON.stringify(regels)});
+          if(!rRes.ok){ const t=await rRes.text(); return json(500,{error:'Dossier opgeslagen, regels faalden ('+rRes.status+'): '+t, dossier_id:dossierId}); }
+        }
+      }
+
       return json(200,{ ok:true, dossier_id:dossierId });
     }
 

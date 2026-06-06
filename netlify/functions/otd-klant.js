@@ -29,14 +29,21 @@ exports.handler = async (event) => {
         const mArr = mRes.ok ? await mRes.json() : [];
         makelaar = mArr[0] || null;
       }
+      const rRes = await fetch(OTD_URL+'/rest/v1/otd_regels?select=prijs_snapshot,volgorde,sectie,otd_producten(naam,commerciele_naam)&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
+      const rRows = rRes.ok ? await rRes.json() : [];
+      const regels = rRows.map(r=>({
+        naam: (r.otd_producten && (r.otd_producten.commerciele_naam || r.otd_producten.naam)) || '',
+        prijs: r.prijs_snapshot
+      }));
+      // alleen de velden die de klant mag zien
       const veilig = {
         documenttype:d.documenttype, object_adres:d.object_adres, object_postcode:d.object_postcode, object_plaats:d.object_plaats,
-        bestemming:d.bestemming, in_gebruik_als:d.in_gebruik_als, vraagprijs:d.vraagprijs,
+        bestemming:d.bestemming, in_gebruik_als:d.in_gebruik_als, bouwvorm:d.bouwvorm, soort_object:d.soort_object, vraagprijs:d.vraagprijs,
         courtage_type:d.courtage_type, courtage_pct_incl:d.courtage_pct_incl, courtage_vast_bedrag:d.courtage_vast_bedrag,
         datum_opdracht:d.datum_opdracht, looptijd:d.looptijd, bijzonderheden:d.bijzonderheden,
         status:d.status, klant_reactie:d.klant_reactie
       };
-      return json(200,{ dossier:veilig, opdrachtgevers, makelaar });
+      return json(200,{ dossier:veilig, opdrachtgevers, makelaar, regels });
     }
 
     if(event.httpMethod === 'POST'){

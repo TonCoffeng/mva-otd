@@ -12,8 +12,8 @@ function courtageTekst(d){
   return '—';
 }
 
-async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar }){
-  const d = dossier||{}, ogs = opdrachtgevers||[], m = makelaar||{};
+async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
+  const d = dossier||{}, ogs = opdrachtgevers||[], m = makelaar||{}, rgs = regels||[];
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -36,6 +36,8 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar }){
 
   sectie('Object');
   rij('Adres',[d.object_adres,[d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '));
+  if(d.bouwvorm) rij('Bouwvorm',d.bouwvorm);
+  if(d.soort_object) rij('Soort object',d.soort_object);
   rij('Bestemming',d.bestemming); rij('In gebruik als',d.in_gebruik_als); rij('Vraagprijs',euro(d.vraagprijs)); y-=8;
 
   sectie('Opdrachtgever'+(ogs.length>1?'s':''));
@@ -44,6 +46,23 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar }){
 
   sectie('Courtage & voorwaarden'); rij('Courtage',courtageTekst(d)); rij('Looptijd',d.looptijd||'onbepaalde tijd'); y-=8;
   if(d.bijzonderheden){ sectie('Bijzonderheden'); wrap(d.bijzonderheden,W); y-=8; }
+
+  // Woningpromotieplan (gekozen diensten + totaal)
+  if(rgs.length){
+    const euro2 = n => '€ '+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const prijsRij = (naam, prijs, opt={}) => {
+      nieuw(90);
+      txt(naam, M, y, {size:10.5, bold:!!opt.bold, color:opt.bold?navy:zwart});
+      const f = opt.bold?bold:font, p = euro2(prijs), pw = f.widthOfTextAtSize(p,10.5);
+      txt(p, M+W-pw, y, {size:10.5, bold:!!opt.bold, color:opt.bold?navy:zwart});
+      y-=16;
+    };
+    sectie('Woningpromotieplan');
+    let totaal=0;
+    rgs.forEach(r=>{ const nm=(r.naam||'—'); const pr=Number(r.prijs_snapshot||0); totaal+=pr; prijsRij(nm, pr); });
+    nieuw(90); page.drawLine({start:{x:M+W-170,y:y+9},end:{x:M+W,y:y+9},thickness:0.8,color:rgb(0.8,0.83,0.88)}); y-=2;
+    prijsRij('Totaal', totaal, {bold:true}); y-=8;
+  }
 
   nieuw(150); y-=18; page.drawLine({start:{x:M,y},end:{x:M+W,y},thickness:1,color:rgb(0.9,0.92,0.95)}); y-=22;
   txt('Door digitale ondertekening verklaart opdrachtgever akkoord te gaan met bovenstaande opdracht tot dienstverlening.',M,y,{size:9,color:grijs}); y-=40;
@@ -66,12 +85,18 @@ exports.handler = async (event) => {
 
     const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email,telefoon_mobiel,volgorde&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
     const opdrachtgevers = ogRes.ok ? await ogRes.json() : [];
+    const rRes = await fetch(OTD_URL+'/rest/v1/otd_regels?select=prijs_snapshot,volgorde,sectie,otd_producten(naam,commerciele_naam)&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
+    const rRows = rRes.ok ? await rRes.json() : [];
+    const regels = rRows.map(r=>({
+      naam: (r.otd_producten && (r.otd_producten.commerciele_naam || r.otd_producten.naam)) || '',
+      prijs_snapshot: r.prijs_snapshot, sectie: r.sectie, volgorde: r.volgorde
+    }));
     let makelaar = null;
     if(d.makelaar_id){
       const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=naam,entiteit_naam&id=eq.'+d.makelaar_id,{headers:otdH});
       const mArr = mRes.ok ? await mRes.json() : []; makelaar = mArr[0]||null;
     }
-    const bytes = await genereerOtdPdf({ dossier:d, opdrachtgevers, makelaar });
+    const bytes = await genereerOtdPdf({ dossier:d, opdrachtgevers, makelaar, regels });
     const b64 = Buffer.from(bytes).toString('base64');
     return {
       statusCode:200,
