@@ -87,6 +87,8 @@ function render(j){
 
   html += '<div class="sec"><h2>Object</h2>'
     + rij('Adres', adres)
+    + rij('Bouwvorm', d.bouwvorm)
+    + rij('Soort object', d.soort_object)
     + rij('Bestemming', d.bestemming)
     + rij('In gebruik als', d.in_gebruik_als)
     + rij('Vraagprijs', euro(d.vraagprijs)) + '</div>';
@@ -101,6 +103,15 @@ function render(j){
 
   if(d.bijzonderheden){
     html += '<div class="sec"><h2>Bijzonderheden</h2><div class="bijz">'+esc(d.bijzonderheden)+'</div></div>';
+  }
+
+  const regels = j.regels || [];
+  if(regels.length){
+    const euro2 = n => '€ '+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+    let tot=0;
+    const rows = regels.map(r=>{ const p=Number(r.prijs||0); tot+=p; return '<div class="rij"><span class="k">'+esc(r.naam||'—')+'</span><span class="v">'+euro2(p)+'</span></div>'; }).join('');
+    html += '<div class="sec"><h2>Woningpromotieplan</h2>'+rows
+      + '<div class="rij" style="font-weight:700;border-top:1px solid #e5e7eb;margin-top:6px;padding-top:8px"><span class="k">Totaal</span><span class="v">'+euro2(tot)+'</span></div></div>';
   }
 
   html += '<div class="acties" id="acties">'

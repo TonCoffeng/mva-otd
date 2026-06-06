@@ -696,6 +696,7 @@ function _verzamelPayload(){
     cloze_id: v('i_cloze') || null,
     herkomst: v('i_herkomst') || null,
     reden: v('i_reden') || null,
+    producten: Array.from(PROD.gekozen),
     opdrachtgever: {
       voornamen: v('i_vn') || null, achternaam: v('i_an') || null,
       email: v('i_em') || null, telefoon: v('i_tel') || null,
