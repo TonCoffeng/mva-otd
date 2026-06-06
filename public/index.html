@@ -287,8 +287,48 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <input type="hidden" id="i_plaats" value="">
         <input type="hidden" id="i_pc" value="">
         <div class="fg-row">
-          <div class="fg"><label>Bestemming</label><input id="i_best" oninput="render()"></div>
-          <div class="fg"><label>In gebruik als</label><input id="i_gebr" oninput="render()"></div>
+          <div class="fg"><label>Bouwvorm</label>
+            <select id="i_bouwvorm" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Bestaande bouw</option>
+              <option>Nieuwbouw</option>
+              <option>NVT</option>
+            </select>
+          </div>
+          <div class="fg"><label>Soort object</label>
+            <select id="i_soort" onchange="soortGewijzigd()">
+              <option value="">— Kies —</option>
+              <option>Woonhuis</option>
+              <option>Appartement</option>
+              <option>Woning met bedrijfsruimte</option>
+              <option>Parkeerplaats / garagebox</option>
+              <option>Bedrijfspand / kantoor</option>
+              <option>Bouwgrond</option>
+              <option value="__anders">Anders, namelijk…</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg" id="fg_soort_anders" style="display:none"><label>Soort object — namelijk</label><input id="i_soort_anders" placeholder="Typ het soort object…" oninput="render()"></div>
+        <div class="fg-row">
+          <div class="fg"><label>Bestemming</label>
+            <select id="i_best" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Wonen</option>
+              <option>Bedrijfsmatig</option>
+              <option>Gemengd (wonen + bedrijf)</option>
+              <option>Anders</option>
+            </select>
+          </div>
+          <div class="fg"><label>In gebruik als</label>
+            <select id="i_gebr" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Eigen bewoning</option>
+              <option>Verhuurd</option>
+              <option>Bedrijfsmatig</option>
+              <option>Leegstaand</option>
+              <option>Anders</option>
+            </select>
+          </div>
         </div>
         <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
           <input id="i_zoek" placeholder="Typ naam of e-mail…" autocomplete="off" oninput="zoekRelatie()">
@@ -365,13 +405,6 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="toggle aan" data-t="sleutel" onclick="tog('sleutel')"><span class="dot">✓</span>Sleutel in bruikleen</div>
           <div class="toggle aan" data-t="label" onclick="tog('label')"><span class="dot">✓</span>Energielabel</div>
           <div class="toggle aan" data-t="mark" onclick="tog('mark')"><span class="dot">✓</span>Marketing toegestaan</div>
-        </div>
-        <label style="font-size:12.5px;font-weight:600;display:block;margin:6px 0 6px">Communicatie via</label>
-        <div class="toggle-grid">
-          <div class="toggle aan" data-t="c_email" onclick="tog('c_email')"><span class="dot">✓</span>E-mail</div>
-          <div class="toggle aan" data-t="c_wa" onclick="tog('c_wa')"><span class="dot">✓</span>WhatsApp</div>
-          <div class="toggle aan" data-t="c_sms" onclick="tog('c_sms')"><span class="dot">✓</span>SMS</div>
-          <div class="toggle aan" data-t="c_tel" onclick="tog('c_tel')"><span class="dot">✓</span>Telefonisch</div>
         </div>
       </div>
 
@@ -523,6 +556,16 @@ function kiesCourtage(c){state.court=c;
 function v(id){return document.getElementById(id).value}
 function flash(el){if(!el)return; el.classList.add('hl'); setTimeout(()=>el.classList.remove('hl'),400)}
 
+function soortGewijzigd(){
+  const sel = document.getElementById('i_soort').value;
+  document.getElementById('fg_soort_anders').style.display = (sel==='__anders') ? '' : 'none';
+  render();
+}
+function soortObjectWaarde(){
+  const s = v('i_soort');
+  return s==='__anders' ? (v('i_soort_anders')||'') : s;
+}
+
 function render(){
   const naam=(v('i_vn')+" "+v('i_an')).trim();
   const court = state.court==='pct'
@@ -532,8 +575,6 @@ function render(){
     ['Verkoopbord', state.t.bord],['Sleutel in bruikleen', state.t.sleutel],
     ['Energielabel', state.t.label],['Marketing', state.t.mark]
   ].map(([l,on])=>`<div class="pv-vink">${on?'☑':'☐'} ${l}</div>`).join("");
-  const comm=[['E-mail',state.t.c_email],['WhatsApp',state.t.c_wa],['SMS',state.t.c_sms],['Telefonisch',state.t.c_tel]]
-    .filter(x=>x[1]).map(x=>x[0]).join(", ")||"—";
 
   const gekozen = gekozenProducten();
   let pkHtml = gekozen.map(p=>`
@@ -551,8 +592,10 @@ function render(){
     <div class="kv"><span class="k">Geboren</span><span>${v('i_gbd')} te ${v('i_gbp')}</span></div>
     <div class="pv-wwft">Na ondertekening wordt automatisch het verplichte cliëntenonderzoek uitgevoerd. De opdracht wordt pas actief in behandeling genomen nadat de benodigde controles en dossiergegevens volledig zijn verwerkt.</div>
     <h4>Object</h4>
-    <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')}</span></div>
-    <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')}</span></div>
+    <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
+    <div class="kv"><span class="k">Soort object</span><span>${soortObjectWaarde()||'—'}</span></div>
+    <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')||'—'}</span></div>
+    <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')||'—'}</span></div>
     <div class="kv"><span class="k">Vraagprijs</span><span>€ ${v('i_vp')} k.k.</span></div>
     <div class="kv"><span class="k">Aanvaarding</span><span>${v('i_aanv')}</span></div>
     <h4>Kosten en courtage</h4>
@@ -560,7 +603,6 @@ function render(){
     <div class="kv"><span class="k">Opstartkosten</span><span>betaalwijze: ${v('i_term')}</span></div>
     <h4>Afspraken</h4>
     ${vinkjes}
-    <div class="pv-vink" style="margin-top:4px;color:#555">Communicatie via: ${comm}</div>
     <div class="pv-pakket">
       <h4 style="margin-top:0">Woningpromotieplan</h4>
       ${pkHtml}
@@ -644,6 +686,8 @@ function _verzamelPayload(){
     realworks_object_id: v('i_rwid') || null,
     bestemming: v('i_best') || null,
     in_gebruik_als: v('i_gebr') || null,
+    bouwvorm: v('i_bouwvorm') || null,
+    soort_object: soortObjectWaarde() || null,
     courtage_type: state.court==='vast' ? 'vast_bedrag' : 'percentage',
     courtage_pct: v('i_pct'),
     courtage_vast: v('i_vast'),
