@@ -88,6 +88,12 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .fg input,.fg select,.fg textarea{width:100%;padding:11px 13px;border:1.5px solid var(--grijs-mid);border-radius:9px;font-size:14px;font-family:inherit;color:var(--navy);background:#fff;transition:border-color .15s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--navy)}
 .fg-row{display:flex;gap:10px}.fg-row .fg{flex:1}
+.og-blok{border:1.5px solid var(--grijs-mid);border-radius:11px;padding:13px;margin-top:12px;background:#fafbfc}
+.og-blok-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.og-del{background:none;border:none;color:#b0392f;font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px}
+.og-del:hover{text-decoration:underline}
+.og-add{margin-top:12px;width:100%;background:#fff;border:1.5px dashed var(--navy);color:var(--navy);border-radius:10px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .12s}
+.og-add:hover{background:#f3f6fb}
 
 .toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .toggle{border:1.5px solid var(--grijs-mid);border-radius:10px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;transition:all .15s;background:#fff}
@@ -347,6 +353,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="fg"><label>Geboorteplaats</label><input id="i_gbp" oninput="render()"></div>
           <div class="fg"><label>Geboortedatum</label><input id="i_gbd" oninput="render()"></div>
         </div>
+        <div id="og-extra"></div>
+        <button type="button" class="og-add" onclick="voegOgToe()">+ Partner / extra opdrachtgever</button>
         <div class="fg-row">
           <div class="fg"><label>Herkomst relatie</label>
             <select id="i_herkomst">
@@ -566,8 +574,57 @@ function soortObjectWaarde(){
   return s==='__anders' ? (v('i_soort_anders')||'') : s;
 }
 
+// ---- opdrachtgevers (1 vast + extra) ----
+let ogTeller = 1;
+function voegOgToe(){
+  ogTeller++;
+  const n = ogTeller;
+  const div = document.createElement('div');
+  div.className = 'og-blok'; div.setAttribute('data-og', n);
+  div.innerHTML =
+    '<div class="og-blok-h"><span>Opdrachtgever</span><button type="button" class="og-del" onclick="verwijderOg('+n+')">verwijderen</button></div>'
+    + '<div class="fg-row"><div class="fg"><label>Voornaam</label><input id="og'+n+'_vn" oninput="render()"></div>'
+    + '<div class="fg"><label>Achternaam</label><input id="og'+n+'_an" oninput="render()"></div></div>'
+    + '<div class="fg-row"><div class="fg"><label>E-mail</label><input id="og'+n+'_em" oninput="render()"></div>'
+    + '<div class="fg"><label>Telefoon</label><input id="og'+n+'_tel" oninput="render()"></div></div>'
+    + '<div class="fg-row"><div class="fg"><label>Geboorteplaats</label><input id="og'+n+'_gbp" oninput="render()"></div>'
+    + '<div class="fg"><label>Geboortedatum</label><input id="og'+n+'_gbd" oninput="render()"></div></div>';
+  document.getElementById('og-extra').appendChild(div);
+  hernummerOg(); render();
+}
+function verwijderOg(n){
+  const b = document.querySelector('#og-extra .og-blok[data-og="'+n+'"]');
+  if(b) b.remove();
+  hernummerOg(); render();
+}
+function hernummerOg(){
+  document.querySelectorAll('#og-extra .og-blok').forEach((b,i)=>{
+    const sp=b.querySelector('.og-blok-h span'); if(sp) sp.textContent='Opdrachtgever '+(i+2);
+  });
+}
+function verzamelOpdrachtgevers(){
+  const lijst = [{
+    voornamen:v('i_vn')||null, achternaam:v('i_an')||null, email:v('i_em')||null,
+    telefoon:v('i_tel')||null, geboorteplaats:v('i_gbp')||null, geboortedatum:v('i_gbd')||null
+  }];
+  document.querySelectorAll('#og-extra .og-blok').forEach(b=>{
+    const n=b.getAttribute('data-og');
+    const o={ voornamen:v('og'+n+'_vn')||null, achternaam:v('og'+n+'_an')||null, email:v('og'+n+'_em')||null,
+      telefoon:v('og'+n+'_tel')||null, geboorteplaats:v('og'+n+'_gbp')||null, geboortedatum:v('og'+n+'_gbd')||null };
+    if(o.voornamen||o.achternaam||o.email) lijst.push(o);
+  });
+  return lijst;
+}
+
 function render(){
-  const naam=(v('i_vn')+" "+v('i_an')).trim();
+  const ogs = verzamelOpdrachtgevers();
+  const ogHtml = ogs.map((o,i)=>{
+    const nm=[o.voornamen,o.achternaam].filter(Boolean).join(' ')||'—';
+    const lbl = ogs.length>1 ? ('Opdrachtgever '+(i+1)) : 'Naam';
+    let h = `<div class="kv"><span class="k">${lbl}</span><span>${nm}</span></div>`;
+    if(o.email) h += `<div class="kv"><span class="k">E-mail</span><span>${o.email}</span></div>`;
+    return h;
+  }).join('');
   const court = state.court==='pct'
     ? `De courtage bedraagt <b>${v('i_pct')}%</b> inclusief BTW van de gerealiseerde verkoopprijs.`
     : `De courtage bedraagt een vast bedrag van <b>€ ${v('i_vast')}</b> inclusief BTW.`;
@@ -586,10 +643,8 @@ function render(){
     <div class="pv-logo">MAKELAARSVAN<span class="o">.</span><br>AMSTERDAM</div>
     <div class="pv-titel">Opdracht tot dienstverlening</div>
     <div class="pv-obj">${v('i_obj')||'—'}</div>
-    <h4>Opdrachtgever</h4>
-    <div class="kv"><span class="k">Naam</span><span>${naam||'—'}</span></div>
-    <div class="kv"><span class="k">E-mail</span><span>${v('i_em')||'—'}</span></div>
-    <div class="kv"><span class="k">Geboren</span><span>${v('i_gbd')} te ${v('i_gbp')}</span></div>
+    <h4>Opdrachtgever${ogs.length>1?'s':''}</h4>
+    ${ogHtml||'<div class="kv"><span class="k">Naam</span><span>—</span></div>'}
     <div class="pv-wwft">Na ondertekening wordt automatisch het verplichte cliëntenonderzoek uitgevoerd. De opdracht wordt pas actief in behandeling genomen nadat de benodigde controles en dossiergegevens volledig zijn verwerkt.</div>
     <h4>Object</h4>
     <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
@@ -634,6 +689,7 @@ async function openBouwer(dossierId){
   document.getElementById('hdr-badge').textContent="Verkoop";
   // selectie en laadstatus resetten voor een schone start
   PROD.gekozen = new Set();
+  document.getElementById('og-extra').innerHTML=''; ogTeller=1;
   const laden = document.getElementById('prod-laden');
   if(laden){ laden.style.display=''; laden.textContent='Producten laden…'; }
   document.getElementById('prod-veel-wrap').style.display='none';
@@ -697,11 +753,7 @@ function _verzamelPayload(){
     herkomst: v('i_herkomst') || null,
     reden: v('i_reden') || null,
     producten: Array.from(PROD.gekozen),
-    opdrachtgever: {
-      voornamen: v('i_vn') || null, achternaam: v('i_an') || null,
-      email: v('i_em') || null, telefoon: v('i_tel') || null,
-      geboorteplaats: v('i_gbp') || null, geboortedatum: v('i_gbd') || null
-    }
+    opdrachtgevers: verzamelOpdrachtgevers()
   };
 }
 async function _slaOpConcept(){
