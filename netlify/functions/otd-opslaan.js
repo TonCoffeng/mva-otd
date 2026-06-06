@@ -100,20 +100,24 @@ exports.handler = async (event) => {
       const dossierId = dRows[0] && dRows[0].id;
       if(!dossierId) return json(500,{error:'Geen dossier-id terug.'});
 
-      const og = body.opdrachtgever || {};
-      const ogRow = {
-        dossier_id: dossierId,
-        volgorde: 1,
-        type: 'particulier',
-        voornamen: og.voornamen || null,
-        achternaam: og.achternaam || null,
-        email: og.email || null,
-        telefoon_mobiel: og.telefoon || null,
-        geboorteplaats: og.geboorteplaats || null,
-        geboortedatum: parseNLDate(og.geboortedatum)
-      };
-      const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers',{method:'POST',headers:otdH,body:JSON.stringify(ogRow)});
-      if(!ogRes.ok){ const t=await ogRes.text(); return json(500,{error:'Dossier opgeslagen, opdrachtgever faalde ('+ogRes.status+'): '+t, dossier_id:dossierId}); }
+      let ogLijst = Array.isArray(body.opdrachtgevers) ? body.opdrachtgevers
+                  : (body.opdrachtgever ? [body.opdrachtgever] : []);
+      ogLijst = ogLijst.filter(o=>o && (o.voornamen || o.achternaam || o.email));
+      if(ogLijst.length){
+        const ogRows = ogLijst.map((og,i)=>({
+          dossier_id: dossierId,
+          volgorde: i+1,
+          type: 'particulier',
+          voornamen: og.voornamen || null,
+          achternaam: og.achternaam || null,
+          email: og.email || null,
+          telefoon_mobiel: og.telefoon || null,
+          geboorteplaats: og.geboorteplaats || null,
+          geboortedatum: parseNLDate(og.geboortedatum)
+        }));
+        const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers',{method:'POST',headers:otdH,body:JSON.stringify(ogRows)});
+        if(!ogRes.ok){ const t=await ogRes.text(); return json(500,{error:'Dossier opgeslagen, opdrachtgever(s) faalde ('+ogRes.status+'): '+t, dossier_id:dossierId}); }
+      }
 
       // regels (woningpromotieplan) — prijssnapshot server-side uit de catalogus
       const prodIds = Array.isArray(body.producten) ? body.producten.filter(Boolean) : [];
