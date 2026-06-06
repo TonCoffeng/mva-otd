@@ -81,6 +81,8 @@ exports.handler = async (event) => {
         realworks_object_id: body.realworks_object_id || null,
         bestemming: body.bestemming || null,
         in_gebruik_als: body.in_gebruik_als || null,
+        bouwvorm: body.bouwvorm || null,
+        soort_object: body.soort_object || null,
         vraagprijs: parseNLNum(body.vraagprijs),
         datum_opdracht: parseNLDate(body.datum_opdracht),
         courtage_type: ct,
