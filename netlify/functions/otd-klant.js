@@ -20,7 +20,7 @@ exports.handler = async (event) => {
       const d = dArr[0];
       if(!d) return json(404,{error:'Deze link is niet (meer) geldig.'});
 
-      const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email,telefoon_mobiel,volgorde&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
+      const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,geboorteplaats,geboortedatum,burgerlijke_staat,optredend_als,bedrijfsnaam,straat,huisnummer,postcode,plaats,email,telefoon_thuis,telefoon_mobiel,type,volgorde&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
       const opdrachtgevers = ogRes.ok ? await ogRes.json() : [];
 
       let makelaar = null;
