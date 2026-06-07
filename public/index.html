@@ -262,6 +262,17 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
   </div>
 </div>
 
+<div id="confirm-modal" class="ov-modal">
+  <div class="ov-box">
+    <h3 id="confirm-titel">Bevestigen</h3>
+    <p id="confirm-tekst"></p>
+    <div class="ov-knoppen">
+      <button class="ov-kop" id="confirm-ja" style="background:var(--groen)" onclick="confirmJa()">Ja</button>
+      <button class="ov-sluit" onclick="confirmNee()">Annuleren</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ BOUWER ============ -->
 <div id="bouwer" class="screen">
   <div class="bouwer-top">
@@ -447,7 +458,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan">💾 Opslaan als concept</button>
         <button class="btn btn-ghost" onclick="vorige()" id="btn-vorige" style="display:none">‹ Vorige</button>
         <button class="btn btn-primary" onclick="volgende()" id="btn-volgende">Volgende ›</button>
-        <button class="btn btn-verstuur" onclick="slaOpEnBied()" id="btn-verstuur" style="display:none">Opslaan &amp; aanbieden ›</button>
+        <button class="btn btn-verstuur" onclick="vraagAanbieden(slaOpEnBied)" id="btn-verstuur" style="display:none">Opslaan &amp; aanbieden ›</button>
       </div>
     </div>
 
@@ -956,7 +967,7 @@ function renderDossiers(json){
     const datum = d.datum_opdracht ? d.datum_opdracht.split('-').reverse().join('-') : '';
     const sub = [d.opdrachtgever || 'Nog geen opdrachtgever', d.documenttype, datum].filter(Boolean).join(' · ');
     const aanbiedKnop = (d.status==='concept')
-      ? `<button class="kaart-knop" onclick="event.stopPropagation();biedAan('${d.id}')">Aanbieden aan klant ›</button>`
+      ? `<button class="kaart-knop" onclick="event.stopPropagation();vraagAanbieden(()=>biedAan('${d.id}'))">Aanbieden aan klant ›</button>`
       : '';
     return `<div class="otd-card ${s.cls}" onclick="openBouwer('${d.id}')">
       <div><div class="adres">${adres}</div><div class="sub">${sub}</div></div>
@@ -988,6 +999,22 @@ function kopieerLink(){
   else { try{document.execCommand('copy');klaar();}catch(e){} }
 }
 function sluitLinkModal(){ document.getElementById('link-modal').style.display='none'; }
+
+let _confirmActie = null;
+function bevestig(titel, tekst, jaLabel, opJa){
+  document.getElementById('confirm-titel').textContent = titel;
+  document.getElementById('confirm-tekst').textContent = tekst;
+  document.getElementById('confirm-ja').textContent = jaLabel || 'Ja';
+  _confirmActie = opJa;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+function confirmJa(){ document.getElementById('confirm-modal').style.display='none'; const a=_confirmActie; _confirmActie=null; if(a) a(); }
+function confirmNee(){ document.getElementById('confirm-modal').style.display='none'; _confirmActie=null; }
+function vraagAanbieden(actie){
+  bevestig('Opdracht aanbieden aan de klant?',
+    'Je staat op het punt deze opdracht naar de opdrachtgever te sturen. De klant ontvangt de opdracht om digitaal te ondertekenen, en de opdracht verschijnt daarna als "Aangeboden" in het overzicht.',
+    'Ja, aanbieden', actie);
+}
 
 // ===== SESSIE-HELPERS =====
 // Haalt een geldig token op en ververst het als het bijna verloopt.
