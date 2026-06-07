@@ -1,8 +1,10 @@
 // netlify/functions/otd-ondertekenen.js
 // POST ?t=TOKEN  (publiek, token = sleutel — net als otd-klant/otd-pdf)
-// Maakt een Signhost-ondertekentransactie aan voor de opdrachtgever:
-//  1) haalt de OTD-PDF op (via otd-pdf), 2) maakt transactie, 3) upload PDF,
-//  4) start transactie, 5) geeft de SignUrl terug zodat de klant direct kan tekenen.
+// Maakt een Signhost-ondertekentransactie aan voor ALLE opdrachtgevers met een e-mailadres:
+//  1) haalt de OTD-PDF op (via otd-pdf), 2) maakt transactie met een signer per opdrachtgever
+//     (op volgorde; 1e tekent via de klant-link, volgende(n) krijgen een Signhost-uitnodiging),
+//  3) upload PDF, 4) start transactie, 5) geeft de SignUrl van de eerste ondertekenaar terug.
+// De webhook zet de status pas op 'ondertekend' als de hele transactie is afgerond.
 const OTD_URL = 'https://oonlagagxodohvakwfat.supabase.co';
 const OTD_SERVICE_KEY = process.env.OTD_SERVICE_KEY;
 const SIGNHOST_API_KEY = (process.env.SIGNHOST_API_KEY || '').trim();
@@ -28,12 +30,11 @@ exports.handler = async (event) => {
     if(!d) return json(404,{error:'Deze link is niet (meer) geldig.'});
     if(d.status === 'ondertekend') return json(409,{error:'Deze opdracht is al ondertekend.'});
 
-    // opdrachtgever (eerste ondertekenaar)
-    const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email&dossier_id=eq.'+d.id+'&order=volgorde.asc&limit=1',{headers:otdH});
+    // opdrachtgevers — alle met een e-mailadres worden ondertekenaar (op volgorde)
+    const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email,volgorde&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
     const ogArr = ogRes.ok ? await ogRes.json() : [];
-    const og = ogArr[0];
-    if(!og || !og.email) return json(400,{error:'Opdrachtgever heeft geen e-mailadres; ondertekenen kan niet starten.'});
-    const naam = [og.voornamen,og.tussenvoegsels,og.achternaam].filter(Boolean).join(' ') || 'Opdrachtgever';
+    const ondertekenaars = ogArr.filter(o=>o && o.email);
+    if(!ondertekenaars.length) return json(400,{error:'Geen enkele opdrachtgever heeft een e-mailadres; ondertekenen kan niet starten.'});
 
     // makelaar ophalen (ontvanger van het getekende exemplaar)
     let makelaarEmail = null;
@@ -52,13 +53,14 @@ exports.handler = async (event) => {
     // 3. Signhost-transactie aanmaken
     const postbackUrl = 'https://'+host+'/.netlify/functions/otd-signhost-webhook';
     const createBody = {
-      Signers: [{
-        Email: og.email,
-        SendSignRequest: false,           // geen aparte Signhost-mail; wij sturen direct door
+      Signers: ondertekenaars.map((o,i)=>({
+        Email: o.email,
+        SendSignRequest: i>0,             // 1e tekent via de klant-link; volgende(n) krijgen op hun beurt een Signhost-uitnodiging
         SignRequestMessage: 'Opdracht tot dienstverlening',
         Language: 'nl-NL',
+        SignOrder: i+1,
         Verifications: [{ Type: 'Scribble', RequireHandsignature: true }]
-      }],
+      })),
       Reference: d.id,
       PostbackUrl: postbackUrl,
       DaysToExpire: 30,
@@ -97,15 +99,21 @@ exports.handler = async (event) => {
     const sText = await sRes.text();
     if(!sRes.ok) return json(502,{error:'Signhost: starten mislukt ('+sRes.status+'): '+sText.slice(0,300)});
 
-    // 6. SignUrl bepalen: eerst uit het start-antwoord, anders de transactie ophalen
+    // 6. SignUrl van de eerste ondertekenaar bepalen (uit start-antwoord, anders transactie ophalen)
+    const eersteEmail = (ondertekenaars[0].email || '').toLowerCase();
+    const vindSignUrl = (obj) => {
+      if(!obj || !Array.isArray(obj.Signers)) return null;
+      const m = obj.Signers.find(s=>s && s.Email && s.Email.toLowerCase()===eersteEmail);
+      return (m && m.SignUrl) || (obj.Signers[0] && obj.Signers[0].SignUrl) || null;
+    };
     let signUrl = null;
-    try { const st = sText ? JSON.parse(sText) : null; if(st && st.Signers && st.Signers[0]) signUrl = st.Signers[0].SignUrl; } catch(e){}
+    try { signUrl = vindSignUrl(sText ? JSON.parse(sText) : null); } catch(e){}
     if(!signUrl){
       const gRes = await fetch(SIGNHOST_BASE+'/transaction/'+trxId, { headers: Object.assign({}, shH, { 'Accept':'application/json' }) });
       const gText = await gRes.text();
       if(!gRes.ok) return json(502,{error:'Signhost: transactie ophalen mislukt ('+gRes.status+'): '+gText.slice(0,300)});
       let gt = null; try { gt = JSON.parse(gText); } catch(e){}
-      if(gt && gt.Signers && gt.Signers[0]) signUrl = gt.Signers[0].SignUrl;
+      signUrl = vindSignUrl(gt);
     }
     if(!signUrl) return json(502,{error:'Signhost gaf geen tekenlink (SignUrl) terug.'});
 
