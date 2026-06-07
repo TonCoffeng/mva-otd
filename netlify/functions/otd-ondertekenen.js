@@ -36,7 +36,7 @@ exports.handler = async (event) => {
     const ondertekenaars = ogArr.filter(o=>o && o.email);
     if(!ondertekenaars.length) return json(400,{error:'Geen enkele opdrachtgever heeft een e-mailadres; ondertekenen kan niet starten.'});
 
-    // makelaar ophalen (ontvanger van het getekende exemplaar)
+    // makelaar ophalen (tekent als laatste mee — tweezijdige overeenkomst)
     let makelaarEmail = null;
     if(d.makelaar_id){
       const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=email&id=eq.'+d.makelaar_id,{headers:otdH});
@@ -51,11 +51,14 @@ exports.handler = async (event) => {
     const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
 
     // 3. Signhost-transactie aanmaken
+    // Volgorde: eerst alle opdrachtgevers, daarna de makelaar (medeondertekenaar).
+    const signerEmails = ondertekenaars.map(o=>o.email);
+    if(makelaarEmail) signerEmails.push(makelaarEmail);
     const postbackUrl = 'https://'+host+'/.netlify/functions/otd-signhost-webhook';
     const createBody = {
-      Signers: ondertekenaars.map((o,i)=>({
-        Email: o.email,
-        SendSignRequest: i>0,             // 1e tekent via de klant-link; volgende(n) krijgen op hun beurt een Signhost-uitnodiging
+      Signers: signerEmails.map((email,i)=>({
+        Email: email,
+        SendSignRequest: i>0,             // 1e opdrachtgever tekent via de klant-link; de rest (incl. makelaar) krijgt op zijn beurt een Signhost-uitnodiging
         SignRequestMessage: 'Opdracht tot dienstverlening',
         Language: 'nl-NL',
         SignOrder: i+1,
@@ -65,12 +68,8 @@ exports.handler = async (event) => {
       PostbackUrl: postbackUrl,
       DaysToExpire: 30,
       Language: 'nl-NL',
-      SendEmailNotifications: true
+      SendEmailNotifications: true       // iedere ondertekenaar (incl. makelaar) krijgt het getekende exemplaar
     };
-    // ontvanger van het getekende exemplaar: het kantoor (de ondertekenaar krijgt zelf al een kopie)
-    const receivers = [];
-    if(makelaarEmail) receivers.push({ Email: makelaarEmail, Language:'nl-NL', Message:'Het getekende opdracht tot dienstverlening is bijgevoegd.' });
-    if(receivers.length) createBody.Receivers = receivers;
     const cRes = await fetch(SIGNHOST_BASE+'/transaction', {
       method:'POST',
       headers: Object.assign({}, shH, { 'Content-Type':'application/json', 'Accept':'application/json' }),

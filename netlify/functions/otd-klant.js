@@ -37,7 +37,7 @@ exports.handler = async (event) => {
       }));
       // alleen de velden die de klant mag zien
       const veilig = {
-        documenttype:d.documenttype, object_adres:d.object_adres, object_postcode:d.object_postcode, object_plaats:d.object_plaats,
+        documenttype:d.documenttype, taal:d.taal, object_adres:d.object_adres, object_postcode:d.object_postcode, object_plaats:d.object_plaats,
         bestemming:d.bestemming, in_gebruik_als:d.in_gebruik_als, bouwvorm:d.bouwvorm, soort_object:d.soort_object, vraagprijs:d.vraagprijs,
         courtage_type:d.courtage_type, courtage_pct_incl:d.courtage_pct_incl, courtage_vast_bedrag:d.courtage_vast_bedrag,
         datum_opdracht:d.datum_opdracht, looptijd:d.looptijd, bijzonderheden:d.bijzonderheden,
