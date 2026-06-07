@@ -76,33 +76,47 @@ async function laad(){
 
 function rij(k,v){ return v==null||v===''? '' : '<div class="rij"><span class="k">'+k+'</span><span class="v">'+esc(v)+'</span></div>'; }
 
+let TW=false;
+const ENV_KLANT = {
+  'Bestaande bouw':'Existing construction','Nieuwbouw':'New construction','NVT':'N/A',
+  'Woonhuis':'House','Appartement':'Apartment','Woning met bedrijfsruimte':'House with business premises',
+  'Parkeerplaats / garagebox':'Parking / garage','Bedrijfspand / kantoor':'Commercial premises / office','Bouwgrond':'Building plot',
+  'Wonen':'Residential','Bedrijfsmatig':'Commercial','Gemengd (wonen + bedrijf)':'Mixed (residential + commercial)','Anders':'Other',
+  'Eigen bewoning':'Owner-occupied','Verhuurd':'Let','Leegstaand':'Vacant','onbepaalde tijd':'indefinite term'
+};
+function L(nl,en){ return (TW&&en) ? nl+' / '+en : nl; }
+function Vw(val){ if(val==null||val==='') return val; const s=String(val); return (TW&&ENV_KLANT[s]) ? s+' / '+ENV_KLANT[s] : s; }
+
 function render(j){
   const d = j.dossier;
   const og = j.opdrachtgevers || [];
   const m = j.makelaar || {};
+  TW = (d.taal==='nl_en');
   const adres = [d.object_adres, [d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const titel = d.documenttype==='aankoop' ? 'Opdracht tot dienstverlening — aankoop' : 'Opdracht tot dienstverlening — verkoop';
+  const titelNL = d.documenttype==='aankoop' ? 'Opdracht tot dienstverlening — aankoop' : 'Opdracht tot dienstverlening — verkoop';
+  const titelEN = d.documenttype==='aankoop' ? 'Instruction to act as intermediary — purchase' : 'Instruction to act as intermediary — sale';
+  const titel = TW ? titelNL+' / '+titelEN : titelNL;
 
   let html = '<div class="doc-h"><h1>'+esc(titel)+'</h1><p>'+(m.entiteit_naam? esc(m.entiteit_naam) : 'MakelaarsVan Amsterdam')+(d.datum_opdracht? ' · '+datumNL(d.datum_opdracht):'')+'</p></div>';
 
-  html += '<div class="sec"><h2>Object</h2>'
-    + rij('Adres', adres)
-    + rij('Bouwvorm', d.bouwvorm)
-    + rij('Soort object', d.soort_object)
-    + rij('Bestemming', d.bestemming)
-    + rij('In gebruik als', d.in_gebruik_als)
-    + rij('Vraagprijs', euro(d.vraagprijs)) + '</div>';
+  html += '<div class="sec"><h2>'+esc(L('Object','Property'))+'</h2>'
+    + rij(L('Adres','Address'), adres)
+    + rij(L('Bouwvorm','Construction'), Vw(d.bouwvorm))
+    + rij(L('Soort object','Property type'), Vw(d.soort_object))
+    + rij(L('Bestemming','Designated use'), Vw(d.bestemming))
+    + rij(L('In gebruik als','Current use'), Vw(d.in_gebruik_als))
+    + rij(L('Vraagprijs','Asking price'), euro(d.vraagprijs)) + '</div>';
 
-  html += '<div class="sec"><h2>Opdrachtgever'+(og.length>1?'s':'')+'</h2>'
+  html += '<div class="sec"><h2>'+esc(L('Opdrachtgever'+(og.length>1?'s':''), og.length>1?'Clients':'Client'))+'</h2>'
     + (og.length? og.map(o=>rij(naamVan(o)||'—', o.email||o.telefoon_mobiel||'')).join('') : '<div class="rij"><span class="k">—</span></div>')
     + '</div>';
 
-  html += '<div class="sec"><h2>Courtage &amp; voorwaarden</h2>'
-    + rij('Courtage', courtageTekst(d))
-    + rij('Looptijd', d.looptijd) + '</div>';
+  html += '<div class="sec"><h2>'+esc(L('Courtage & voorwaarden','Fee & terms'))+'</h2>'
+    + rij(L('Courtage','Fee'), courtageTekst(d))
+    + rij(L('Looptijd','Term'), Vw(d.looptijd)) + '</div>';
 
   if(d.bijzonderheden){
-    html += '<div class="sec"><h2>Bijzonderheden</h2><div class="bijz">'+esc(d.bijzonderheden)+'</div></div>';
+    html += '<div class="sec"><h2>'+esc(L('Bijzonderheden','Additional details'))+'</h2><div class="bijz">'+esc(d.bijzonderheden)+'</div></div>';
   }
 
   const regels = j.regels || [];
@@ -110,8 +124,8 @@ function render(j){
     const euro2 = n => '€ '+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
     let tot=0;
     const rows = regels.map(r=>{ const p=Number(r.prijs||0); tot+=p; return '<div class="rij"><span class="k">'+esc(r.naam||'—')+'</span><span class="v">'+euro2(p)+'</span></div>'; }).join('');
-    html += '<div class="sec"><h2>Woningpromotieplan</h2>'+rows
-      + '<div class="rij" style="font-weight:700;border-top:1px solid #e5e7eb;margin-top:6px;padding-top:8px"><span class="k">Totaal</span><span class="v">'+euro2(tot)+'</span></div></div>';
+    html += '<div class="sec"><h2>'+esc(L('Woningpromotieplan','Marketing plan'))+'</h2>'+rows
+      + '<div class="rij" style="font-weight:700;border-top:1px solid #e5e7eb;margin-top:6px;padding-top:8px"><span class="k">'+esc(L('Totaal','Total'))+'</span><span class="v">'+euro2(tot)+'</span></div></div>';
   }
 
   html += '<div class="acties" id="acties">'
