@@ -284,6 +284,12 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <div class="fg" id="fg_makelaar" style="display:none"><label>Opdracht namens makelaar</label>
           <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
         </div>
+        <div class="fg"><label>Taal van de opdracht</label>
+          <div class="courtage-keuze" id="taal-keuze">
+            <div class="ckeuze aan" data-taal="nl" onclick="kiesTaal('nl')">Nederlands</div>
+            <div class="ckeuze" data-taal="nl_en" onclick="kiesTaal('nl_en')">Nederlands + Engels</div>
+          </div>
+        </div>
         <div class="fg"><label>Object uit Realworks</label>
           <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
           <div id="i_pand_res" class="zoek-res"></div>
@@ -459,7 +465,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 <script>
 // ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
 const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
-const state={stap:0, court:'pct', t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
+const state={stap:0, court:'pct', taal:'nl', t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
 
 function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
@@ -556,9 +562,10 @@ function prodTotaal(){ return gekozenProducten().reduce((s,p)=>s+_prijsVan(p),0)
 
 function tog(k){state.t[k]=state.t[k]?0:1;
   document.querySelector(`[data-t="${k}"]`).classList.toggle('aan',!!state.t[k]); render()}
+function kiesTaal(t){state.taal=t;
+  document.querySelectorAll('#taal-keuze .ckeuze').forEach(e=>e.classList.toggle('aan',e.dataset.taal===t)); render();}
 function kiesCourtage(c){state.court=c;
-  document.querySelectorAll('.ckeuze').forEach(e=>e.classList.toggle('aan',e.dataset.ct===c));
-  document.getElementById('fg_pct').style.display = c==='pct'?'block':'none';
+  document.querySelectorAll('.ckeuze[data-ct]').forEach(e=>e.classList.toggle('aan',e.dataset.ct===c));  document.getElementById('fg_pct').style.display = c==='pct'?'block':'none';
   document.getElementById('fg_vast').style.display = c==='vast'?'block':'none'; render()}
 
 function v(id){return document.getElementById(id).value}
@@ -690,6 +697,7 @@ async function openBouwer(dossierId){
   // selectie en laadstatus resetten voor een schone start
   PROD.gekozen = new Set();
   document.getElementById('og-extra').innerHTML=''; ogTeller=1;
+  kiesTaal('nl');
   const laden = document.getElementById('prod-laden');
   if(laden){ laden.style.display=''; laden.textContent='Producten laden…'; }
   document.getElementById('prod-veel-wrap').style.display='none';
@@ -735,6 +743,7 @@ function _verzamelPayload(){
   const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
   return {
     documenttype:'verkoop',
+    taal: state.taal || 'nl',
     makelaar_id: null,
     object_adres: v('i_obj').trim(),
     object_plaats: v('i_plaats') || null,
