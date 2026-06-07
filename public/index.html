@@ -976,12 +976,7 @@ async function biedAan(dossierId){
     });
     const j = await res.json();
     if(!res.ok) throw new Error(j.error||'fout');
-    const link = j.link || (location.origin + '/klant.html?t=' + j.token);
-    document.getElementById('link-veld').value = link;
-    document.getElementById('link-uitleg').innerHTML = j.mailed
-      ? ('De opdracht is per e-mail verstuurd naar <strong>'+(j.mail_to||'de opdrachtgever')+'</strong>. Onderstaande link kun je eventueel zelf nog delen.')
-      : 'De opdracht staat klaar voor de klant. Stuur onderstaande link naar de opdrachtgever.';
-    document.getElementById('link-modal').style.display = 'flex';
+    // Geen pop-up meer na aanbieden — de statuswijziging naar "Aangeboden" in de lijst is de bevestiging.
     laadDossiers();
   }catch(e){ alert('Aanbieden mislukt: '+(e.message||e)); }
 }
