@@ -20,32 +20,45 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   const navy=rgb(0.106,0.165,0.290), oranje=rgb(0.918,0.345,0.047), grijs=rgb(0.39,0.45,0.55), zwart=rgb(0.12,0.16,0.25);
   let page = doc.addPage([595.28,841.89]);
   const M=56, W=595.28-M*2; let y=786;
+  const tw = (d.taal==='nl_en');                       // tweetalig NL + Engels
+  const ENV = {
+    'Bestaande bouw':'Existing construction','Nieuwbouw':'New construction','NVT':'N/A',
+    'Woonhuis':'House','Appartement':'Apartment','Woning met bedrijfsruimte':'House with business premises',
+    'Parkeerplaats / garagebox':'Parking / garage','Bedrijfspand / kantoor':'Commercial premises / office','Bouwgrond':'Building plot',
+    'Wonen':'Residential','Bedrijfsmatig':'Commercial','Gemengd (wonen + bedrijf)':'Mixed (residential + commercial)','Anders':'Other',
+    'Eigen bewoning':'Owner-occupied','Verhuurd':'Let','Leegstaand':'Vacant','onbepaalde tijd':'indefinite term'
+  };
   const euro = n => (n==null||n==='') ? '—' : '€ ' + Number(n).toLocaleString('nl-NL');
   const txt = (s,x,yy,o={}) => page.drawText(String(s==null?'':s),{x,y:yy,size:o.size||10.5,font:o.bold?bold:font,color:o.color||zwart});
+  const Vw = (val)=>{ if(val==null||val==='') return '—'; const s=String(val); return (tw && ENV[s]) ? (s+' / '+ENV[s]) : s; };
+  const labX = tw ? M+210 : M+170;
   function nieuw(minY){ if(y<minY){ page=doc.addPage([595.28,841.89]); y=786; } }
-  function sectie(t){ nieuw(120); txt(t.toUpperCase(),M,y,{bold:true,size:9.5,color:oranje}); y-=17; }
-  function rij(k,v){ nieuw(90); txt(k,M,y,{size:10.5,color:grijs}); txt(v==null?'—':String(v),M+170,y,{size:10.5,bold:true}); y-=17; }
+  function sectie(nl,en){ nieuw(120); txt((tw&&en)?(nl.toUpperCase()+'  /  '+en.toUpperCase()):nl.toUpperCase(),M,y,{bold:true,size:9.5,color:oranje}); y-=17; }
+  function rij(k_nl,v,k_en){ nieuw(90); txt((tw&&k_en)?(k_nl+' / '+k_en):k_nl,M,y,{size:tw?9:10.5,color:grijs}); txt(v==null?'—':String(v),labX,y,{size:10.5,bold:true}); y-=17; }
   function wrap(s,maxW){ const woorden=String(s).split(/\s+/); let line=''; const size=10;
     woorden.forEach(w=>{ const t=line?line+' '+w:w; if(font.widthOfTextAtSize(t,size)>maxW){ nieuw(90); txt(line,M,y,{size}); y-=15; line=w; } else line=t; });
     if(line){ nieuw(90); txt(line,M,y,{size}); y-=15; } }
 
   txt('MAKELAARSVAN AMSTERDAM',M,y,{bold:true,size:13,color:navy}); y-=26;
-  txt((d.documenttype==='aankoop')?'Opdracht tot dienstverlening — aankoop':'Opdracht tot dienstverlening — verkoop',M,y,{bold:true,size:16,color:navy}); y-=16;
+  const titelNL = (d.documenttype==='aankoop')?'Opdracht tot dienstverlening — aankoop':'Opdracht tot dienstverlening — verkoop';
+  const titelEN = (d.documenttype==='aankoop')?'Instruction to act as intermediary — purchase':'Instruction to act as intermediary — sale';
+  txt(titelNL,M,y,{bold:true,size:tw?14:16,color:navy}); y-=tw?15:16;
+  if(tw){ txt(titelEN,M,y,{size:10.5,color:grijs}); y-=14; }
   txt((m.entiteit_naam||'MakelaarsVan Amsterdam')+(d.datum_opdracht?('   ·   '+datumNL(d.datum_opdracht)):''),M,y,{size:9.5,color:grijs}); y-=22;
   page.drawLine({start:{x:M,y},end:{x:M+W,y},thickness:1,color:rgb(0.9,0.92,0.95)}); y-=24;
 
-  sectie('Object');
-  rij('Adres',[d.object_adres,[d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '));
-  if(d.bouwvorm) rij('Bouwvorm',d.bouwvorm);
-  if(d.soort_object) rij('Soort object',d.soort_object);
-  rij('Bestemming',d.bestemming); rij('In gebruik als',d.in_gebruik_als); rij('Vraagprijs',euro(d.vraagprijs)); y-=8;
+  sectie('Object','Property');
+  rij('Adres',[d.object_adres,[d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '),'Address');
+  if(d.bouwvorm) rij('Bouwvorm',Vw(d.bouwvorm),'Construction');
+  if(d.soort_object) rij('Soort object',Vw(d.soort_object),'Property type');
+  rij('Bestemming',Vw(d.bestemming),'Designated use'); rij('In gebruik als',Vw(d.in_gebruik_als),'Current use'); rij('Vraagprijs',euro(d.vraagprijs),'Asking price'); y-=8;
 
-  sectie('Opdrachtgever'+(ogs.length>1?'s':''));
+  sectie('Opdrachtgever'+(ogs.length>1?'s':''), ogs.length>1?'Clients':'Client');
   if(ogs.length){ ogs.forEach(o=>{ const naam=[o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' ')||'—'; rij(naam,[o.email,o.telefoon_mobiel].filter(Boolean).join('  ·  ')); }); } else rij('—','');
   y-=8;
 
-  sectie('Courtage & voorwaarden'); rij('Courtage',courtageTekst(d)); rij('Looptijd',d.looptijd||'onbepaalde tijd'); y-=8;
-  if(d.bijzonderheden){ sectie('Bijzonderheden'); wrap(d.bijzonderheden,W); y-=8; }
+  sectie('Courtage & voorwaarden','Fee & terms'); rij('Courtage',courtageTekst(d),'Fee'); rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term'); y-=8;
+  if(d.bijzonderheden){ sectie('Bijzonderheden','Additional details'); wrap(d.bijzonderheden,W); y-=8; }
 
   // Woningpromotieplan (gekozen diensten + totaal)
   if(rgs.length){
@@ -57,16 +70,17 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
       txt(p, M+W-pw, y, {size:10.5, bold:!!opt.bold, color:opt.bold?navy:zwart});
       y-=16;
     };
-    sectie('Woningpromotieplan');
+    sectie('Woningpromotieplan','Marketing plan');
     let totaal=0;
     rgs.forEach(r=>{ const nm=(r.naam||'—'); const pr=Number(r.prijs_snapshot||0); totaal+=pr; prijsRij(nm, pr); });
     nieuw(90); page.drawLine({start:{x:M+W-170,y:y+9},end:{x:M+W,y:y+9},thickness:0.8,color:rgb(0.8,0.83,0.88)}); y-=2;
-    prijsRij('Totaal', totaal, {bold:true}); y-=8;
+    prijsRij(tw?'Totaal / Total':'Totaal', totaal, {bold:true}); y-=8;
   }
 
   nieuw(150); y-=18; page.drawLine({start:{x:M,y},end:{x:M+W,y},thickness:1,color:rgb(0.9,0.92,0.95)}); y-=22;
-  txt('Door digitale ondertekening verklaart opdrachtgever akkoord te gaan met bovenstaande opdracht tot dienstverlening.',M,y,{size:9,color:grijs}); y-=40;
-  txt('Handtekening opdrachtgever:',M,y,{size:10}); page.drawLine({start:{x:M+160,y:y-2},end:{x:M+360,y:y-2},thickness:0.8,color:grijs});
+  txt('Door digitale ondertekening verklaart opdrachtgever akkoord te gaan met bovenstaande opdracht tot dienstverlening.',M,y,{size:9,color:grijs}); y-=(tw?14:40);
+  if(tw){ txt('By signing digitally, the client agrees to the instruction to act as intermediary set out above.',M,y,{size:9,color:grijs}); y-=26; }
+  txt(tw?'Handtekening opdrachtgever / Signature:':'Handtekening opdrachtgever:',M,y,{size:10}); page.drawLine({start:{x:M+(tw?220:160),y:y-2},end:{x:M+(tw?420:360),y:y-2},thickness:0.8,color:grijs});
 
   return await doc.save();
 }

@@ -74,6 +74,7 @@ exports.handler = async (event) => {
       const ct = (body.courtage_type==='vast_bedrag') ? 'vast_bedrag' : 'percentage';
       const dossier = {
         documenttype: body.documenttype==='aankoop' ? 'aankoop' : 'verkoop',
+        taal: body.taal==='nl_en' ? 'nl_en' : 'nl',
         makelaar_id: makelaarId,
         object_adres: body.object_adres || null,
         object_plaats: body.object_plaats || null,
