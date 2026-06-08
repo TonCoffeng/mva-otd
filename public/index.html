@@ -675,8 +675,8 @@ function updateRekenvoorbeeld(){
   const fmt = n => '€ '+Math.round(n).toLocaleString('nl-NL');
   let rijen = '<div class="rb-rij"><span>Bij vraagprijs ('+fmt(vp)+')</span><b>'+fmt(berekenCourtage(vp))+'</b></div>';
   if(cfg.mp){
-    rijen += '<div class="rb-rij"><span>Bij +€ 10.000 ('+fmt(vp+10000)+')</span><b>'+fmt(berekenCourtage(vp+10000))+'</b></div>';
-    rijen += '<div class="rb-rij"><span>Bij +€ 25.000 ('+fmt(vp+25000)+')</span><b>'+fmt(berekenCourtage(vp+25000))+'</b></div>';
+    rijen += '<div class="rb-rij"><span>Bij '+fmt(vp+10000)+'</span><b>'+fmt(berekenCourtage(vp+10000))+'</b></div>';
+    rijen += '<div class="rb-rij"><span>Bij '+fmt(vp+25000)+'</span><b>'+fmt(berekenCourtage(vp+25000))+'</b></div>';
   }
   box.innerHTML = '<div class="rb-titel">Rekenvoorbeeld courtage (incl. BTW)</div>'+rijen;
   box.style.display='';
