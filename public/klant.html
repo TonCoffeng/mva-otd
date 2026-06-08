@@ -140,11 +140,24 @@ function renderBepalingen(d){
 
 
 function courtageTekst(d){
-  if(d.courtage_type==='percentage' && d.courtage_pct_incl!=null)
-    return String(d.courtage_pct_incl).replace('.',',')+'% incl. btw van de verkoopprijs';
-  if(d.courtage_vast_bedrag!=null)
-    return euro(d.courtage_vast_bedrag)+' incl. btw (vast)';
-  return '—';
+  const heeftMp = d.courtage_meerprijs_waarde!=null && Number(d.courtage_meerprijs_waarde)>0;
+  const drempel = (d.courtage_meerprijs_drempel!=null && Number(d.courtage_meerprijs_drempel)>0)
+      ? Number(d.courtage_meerprijs_drempel)
+      : (d.vraagprijs!=null && d.vraagprijs!=='' ? Number(d.vraagprijs) : 0);
+  const dTxt = drempel ? euro(drempel) : 'de basis';
+  const delen = [];
+  if(d.courtage_pct_incl!=null && Number(d.courtage_pct_incl)>0)
+    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):'van de verkoopprijs'));
+  if(d.courtage_vast_bedrag!=null && Number(d.courtage_vast_bedrag)>0)
+    delen.push('een vast bedrag van '+euro(d.courtage_vast_bedrag));
+  if(heeftMp){
+    if(d.courtage_meerprijs_type==='vast_bedrag')
+      delen.push('een vast bedrag van '+euro(d.courtage_meerprijs_waarde)+' bij verkoop boven '+dTxt);
+    else
+      delen.push(String(d.courtage_meerprijs_waarde).replace('.',',')+'% over het deel boven '+dTxt);
+  }
+  if(!delen.length) return '—';
+  return 'De courtage bedraagt '+delen.join(' plus ')+', inclusief btw.';
 }
 function naamVan(o){ return [o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' '); }
 function datumNL(s){ if(!s) return null; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m? m[3]+'-'+m[2]+'-'+m[1] : s; }
