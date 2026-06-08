@@ -49,6 +49,26 @@ exports.handler = async (event) => {
     const makelaarId = mArr[0] ? mArr[0].id : null;
 
     if (event.httpMethod === 'GET') {
+      // Detail van één dossier (voor terugladen/bewerken in de bouwer)
+      const qid = ((event.queryStringParameters && event.queryStringParameters.id) || '').trim();
+      if (qid) {
+        const dRes = await fetch(OTD_URL + '/rest/v1/otd_dossiers?select=*&id=eq.' + encodeURIComponent(qid) + '&limit=1', { headers: otdH });
+        if (!dRes.ok) return json(500, { error: 'Detail-query faalde (' + dRes.status + ').' });
+        const dArr = await dRes.json();
+        const d = dArr[0];
+        if (!d) return json(404, { error: 'Dossier niet gevonden.' });
+        if (!isDirectie && d.makelaar_id !== makelaarId) return json(403, { error: 'Geen toegang tot dit dossier.' });
+
+        const ogRes = await fetch(OTD_URL + '/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email,telefoon_mobiel,telefoon_thuis,geboorteplaats,geboortedatum,burgerlijke_staat,type,volgorde&dossier_id=eq.' + encodeURIComponent(qid) + '&order=volgorde.asc', { headers: otdH });
+        const opdrachtgevers = ogRes.ok ? await ogRes.json() : [];
+
+        const rRes = await fetch(OTD_URL + '/rest/v1/otd_regels?select=product_id,volgorde&dossier_id=eq.' + encodeURIComponent(qid) + '&order=volgorde.asc', { headers: otdH });
+        const rArr = rRes.ok ? await rRes.json() : [];
+        const producten = rArr.map(r => r.product_id).filter(Boolean);
+
+        return json(200, { rol, naam, makelaarId, dossier: d, opdrachtgevers, producten });
+      }
+
       let path = '/rest/v1/otd_dossiers?select=id,documenttype,object_adres,object_plaats,vraagprijs,courtage_type,courtage_pct_incl,courtage_vast_bedrag,datum_opdracht,status,makelaar_id&order=aangemaakt_op.desc';
       if (!isDirectie) {
         if (!makelaarId) return json(200, { rol, naam, dossiers: [] });

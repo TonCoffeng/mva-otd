@@ -95,11 +95,29 @@ exports.handler = async (event) => {
         status: 'concept'
       };
 
-      const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers',{method:'POST',headers:Object.assign({},otdH,{Prefer:'return=representation'}),body:JSON.stringify(dossier)});
-      if(!dRes.ok){ const t=await dRes.text(); return json(500,{error:'Opslaan dossier faalde ('+dRes.status+'): '+t}); }
-      const dRows = await dRes.json();
-      const dossierId = dRows[0] && dRows[0].id;
-      if(!dossierId) return json(500,{error:'Geen dossier-id terug.'});
+      const bewerkId = body.dossier_id || null;
+      let dossierId;
+      if (bewerkId) {
+        // Bestaand concept bijwerken (geen duplicaat)
+        const exRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,makelaar_id,status&id=eq.'+encodeURIComponent(bewerkId)+'&limit=1',{headers:otdH});
+        const exArr = exRes.ok ? await exRes.json() : [];
+        const ex = exArr[0];
+        if(!ex) return json(404,{error:'Te bewerken dossier niet gevonden.'});
+        if(!isDirectie && ex.makelaar_id !== eigenMakelaarId) return json(403,{error:'Geen toegang tot dit dossier.'});
+        if(ex.status !== 'concept') return json(409,{error:'Alleen concepten kunnen worden bewerkt.'});
+        const upRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?id=eq.'+encodeURIComponent(bewerkId),{method:'PATCH',headers:Object.assign({},otdH,{Prefer:'return=minimal'}),body:JSON.stringify(dossier)});
+        if(!upRes.ok){ const t=await upRes.text(); return json(500,{error:'Bijwerken dossier faalde ('+upRes.status+'): '+t}); }
+        // oude opdrachtgevers + regels weghalen — worden hieronder opnieuw geschreven
+        await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?dossier_id=eq.'+encodeURIComponent(bewerkId),{method:'DELETE',headers:Object.assign({},otdH,{Prefer:'return=minimal'})});
+        await fetch(OTD_URL+'/rest/v1/otd_regels?dossier_id=eq.'+encodeURIComponent(bewerkId),{method:'DELETE',headers:Object.assign({},otdH,{Prefer:'return=minimal'})});
+        dossierId = bewerkId;
+      } else {
+        const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers',{method:'POST',headers:Object.assign({},otdH,{Prefer:'return=representation'}),body:JSON.stringify(dossier)});
+        if(!dRes.ok){ const t=await dRes.text(); return json(500,{error:'Opslaan dossier faalde ('+dRes.status+'): '+t}); }
+        const dRows = await dRes.json();
+        dossierId = dRows[0] && dRows[0].id;
+        if(!dossierId) return json(500,{error:'Geen dossier-id terug.'});
+      }
 
       let ogLijst = Array.isArray(body.opdrachtgevers) ? body.opdrachtgevers
                   : (body.opdrachtgever ? [body.opdrachtgever] : []);
@@ -136,7 +154,7 @@ exports.handler = async (event) => {
         }
       }
 
-      return json(200,{ ok:true, dossier_id:dossierId });
+      return json(200,{ ok:true, dossier_id:dossierId, bewerkt:!!bewerkId });
     }
 
     return json(405,{error:'Methode niet toegestaan.'});
