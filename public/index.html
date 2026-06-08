@@ -108,6 +108,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 
 .courtage-keuze{display:flex;gap:8px;margin-bottom:14px}
 .reken-box{background:#eef3fb;border:1px solid #d6dfee;border-radius:10px;padding:12px 14px;margin:2px 0 14px}
+.btn-bereken{background:var(--navy);color:#fff;border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin:2px 0 12px;transition:background .15s}
+.btn-bereken:active{transform:scale(.98)}
 .rb-titel{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);font-weight:700;margin-bottom:8px}
 .rb-rij{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;padding:3px 0;color:#33405a}
 .rb-rij b{color:var(--navy)}
@@ -449,6 +451,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           </div>
         </div>
         <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
+        <button type="button" class="btn-bereken" onclick="berekenKnop()">Bereken courtage</button>
         <div id="reken-box" class="reken-box" style="display:none"></div>
         <div class="fg"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
@@ -687,6 +690,15 @@ function courtageOmschrijving(){
   }
   if(!delen.length) return 'De courtage wordt nader bepaald.';
   return 'De courtage bedraagt '+delen.join(' plus ')+', inclusief BTW.';
+}
+function berekenKnop(){
+  const box = document.getElementById('reken-box'); if(!box) return;
+  if(!_num('i_vp')){
+    box.style.display='';
+    box.innerHTML = '<div class="rb-titel">Rekenvoorbeeld courtage</div><div class="rb-rij"><span>Vul eerst de vraagprijs in om door te rekenen.</span></div>';
+    return;
+  }
+  updateRekenvoorbeeld();
 }
 function naRekenen(){ updateRekenvoorbeeld(); render(); }
 
