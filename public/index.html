@@ -61,12 +61,16 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .ov-sluit{background:#fff;color:var(--navy);border:1.5px solid var(--grijs-mid);border-radius:9px;padding:12px 18px;font-weight:700;cursor:pointer}
 .chip-concept{background:#fef3c7;color:#92400e} .chip-aangeboden{background:#dbeafe;color:#1e40af} .chip-getekend{background:#d1fae5;color:#065f46}
 
-.fab{position:fixed;right:20px;bottom:22px;background:var(--oranje);color:#fff;border:none;border-radius:30px;padding:15px 22px;font-size:15px;font-weight:700;font-family:inherit;box-shadow:0 6px 18px rgba(232,80,10,.4);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform .12s,background .2s;z-index:50}
-.fab:active{transform:scale(.96);background:var(--oranje-light)}
+.ov-kop-rij{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 12px}
+.nieuw-btn{background:var(--oranje);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(232,80,10,.35);transition:transform .12s,background .2s;white-space:nowrap}
+.nieuw-btn:active{transform:scale(.96);background:var(--oranje-light)}
 
 /* BOUWER */
 #bouwer{max-width:1400px;margin:0 auto;padding:0}
-.bouwer-top{background:#fff;border-bottom:1px solid var(--grijs-mid);padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:58px;z-index:40}
+.bouwer-top{background:#fff;border-bottom:1px solid var(--grijs-mid);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:58px;z-index:40}
+.top-acties{display:flex;gap:8px;margin-left:auto}
+.top-acties .btn{flex:0 0 auto;padding:8px 14px;font-size:13px;border-radius:8px}
+.top-acties .btn-opslaan{margin-right:0}
 .terug{background:none;border:none;color:var(--navy);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
 .steps{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
 .step{font-size:12px;font-weight:600;color:var(--grijs-tekst);padding:6px 12px;border-radius:999px;background:var(--grijs);cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -243,11 +247,12 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
     <div class="stat-card aangeboden"><span class="num" id="stat-aangeboden">0</span><span class="lbl">Aangeboden</span></div>
     <div class="stat-card getekend"><span class="num" id="stat-ondertekend">0</span><span class="lbl">Ondertekend</span></div>
   </div>
-  <div class="section-title" id="overzicht-titel">Mijn opdrachten</div>
+  <div class="ov-kop-rij">
+    <div class="section-title" id="overzicht-titel" style="margin:0">Mijn opdrachten</div>
+    <button class="nieuw-btn" onclick="openBouwer()">＋ Nieuwe OTD</button>
+  </div>
 
   <div id="dossier-lijst"></div>
-
-  <button class="fab" onclick="openBouwer()">＋ Nieuwe OTD</button>
 
   <div id="link-modal" class="ov-modal">
     <div class="ov-box">
@@ -282,6 +287,10 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <div class="step" data-step="1" onclick="ganaarStap(1)">Courtage</div>
       <div class="step" data-step="2" onclick="ganaarStap(2)">Afspraken</div>
       <div class="step" data-step="3" onclick="ganaarStap(3)">Promotieplan</div>
+    </div>
+    <div class="top-acties">
+      <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan-top">💾 Opslaan</button>
+      <button class="btn btn-verstuur" onclick="vraagAanbieden(slaOpEnBied)" id="btn-verstuur-top" style="display:none">Aanbieden ›</button>
     </div>
   </div>
 
@@ -700,6 +709,7 @@ function ganaarStap(n){
   document.getElementById('btn-vorige').style.display = n>0?'block':'none';
   document.getElementById('btn-volgende').style.display = n<3?'block':'none';
   document.getElementById('btn-verstuur').style.display = n===3?'block':'none';
+  const vt=document.getElementById('btn-verstuur-top'); if(vt) vt.style.display = n===3?'inline-flex':'none';
   document.querySelector('.invoer').scrollTop=0;
 }
 function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
