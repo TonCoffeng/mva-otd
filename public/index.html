@@ -705,23 +705,109 @@ function ganaarStap(n){
 function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
 function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 
+// alle invoervelden terug naar een schone staat (voor een nieuwe OTD)
+function wisFormulier(){
+  ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
+   'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  ['i_bouwvorm','i_soort','i_best','i_gebr','i_herkomst','i_reden'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const aanv=document.getElementById('i_aanv'); if(aanv) aanv.value='in overleg';
+  document.getElementById('og-extra').innerHTML=''; ogTeller=1;
+  document.getElementById('fg_soort_anders').style.display='none';
+  PROD.gekozen = new Set();
+  state.t={bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1};
+  document.querySelectorAll('.toggle[data-t]').forEach(e=>{
+    const k=e.dataset.t; e.classList.toggle('aan',!!state.t[k]);
+  });
+  kiesCourtage('pct');
+  kiesTaal('nl');
+}
+
+// helpers voor terugladen
+function _zetSelect(id,val){ const el=document.getElementById(id); if(el) el.value=(val==null?'':val); }
+function _zetSoort(val){
+  const sel=document.getElementById('i_soort'); if(!sel) return;
+  const bekend=['Woonhuis','Appartement','Woning met bedrijfsruimte','Parkeerplaats / garagebox','Bedrijfspand / kantoor','Bouwgrond'];
+  const anders=document.getElementById('fg_soort_anders');
+  if(val && bekend.includes(val)){ sel.value=val; if(anders) anders.style.display='none'; }
+  else if(val){ sel.value='__anders'; if(anders) anders.style.display=''; const a=document.getElementById('i_soort_anders'); if(a) a.value=val; }
+  else { sel.value=''; if(anders) anders.style.display='none'; }
+}
+function _dbDatumNL(s){ if(!s) return ''; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'-'+m[2]+'-'+m[1]):String(s); }
+function _numVeld(n){ if(n==null||n==='') return ''; const x=Number(n); if(isNaN(x)) return String(n); return Number.isInteger(x)?String(x):String(x).replace('.',','); }
+
+async function laadDossierInBouwer(id){
+  const token = await geldigeToken();
+  if(!token){ sessieVerlopen(); return; }
+  const res = await fetch('/.netlify/functions/otd-dossiers?id='+encodeURIComponent(id), { headers:{ Authorization:'Bearer '+token } });
+  const j = await res.json();
+  if(!res.ok) throw new Error(j.error||'laden faalde');
+  const d = j.dossier || {};
+  document.getElementById('hdr-badge').textContent = (d.status==='concept') ? 'Concept' : (STATUS[d.status]?STATUS[d.status].label:'Verkoop');
+
+  // makelaar (directie-dropdown) — vóór het laden van producten zodat de geleerde set klopt
+  const fg = document.getElementById('fg_makelaar');
+  if(fg && fg.style.display!=='none' && d.makelaar_id){
+    const sel=document.getElementById('i_makelaar'); if(sel) sel.value=d.makelaar_id;
+  }
+  kiesTaal(d.taal==='nl_en'?'nl_en':'nl');
+
+  const set=(fid,val)=>{ const el=document.getElementById(fid); if(el) el.value=(val==null?'':val); };
+  set('i_obj', d.object_adres); set('i_plaats', d.object_plaats); set('i_pc', d.object_postcode); set('i_rwid', d.realworks_object_id);
+  _zetSelect('i_bouwvorm', d.bouwvorm);
+  _zetSoort(d.soort_object);
+  _zetSelect('i_best', d.bestemming);
+  _zetSelect('i_gebr', d.in_gebruik_als);
+  _zetSelect('i_herkomst', d.herkomst_relatie);
+  _zetSelect('i_reden', d.reden_opdracht);
+  if(d.courtage_type==='vast_bedrag'){ kiesCourtage('vast'); set('i_vast', _numVeld(d.courtage_vast_bedrag)); }
+  else { kiesCourtage('pct'); set('i_pct', _numVeld(d.courtage_pct_incl)); }
+  set('i_vp', _numVeld(d.vraagprijs));
+  set('i_cloze', d.cloze_id);
+
+  const ogs = j.opdrachtgevers || [];
+  if(ogs[0]){ const o=ogs[0];
+    set('i_vn', o.voornamen); set('i_an', o.achternaam); set('i_em', o.email);
+    set('i_tel', o.telefoon_mobiel||o.telefoon_thuis); set('i_gbp', o.geboorteplaats); set('i_gbd', _dbDatumNL(o.geboortedatum));
+  }
+  for(let i=1;i<ogs.length;i++){
+    voegOgToe(); const n=ogTeller; const o=ogs[i];
+    set('og'+n+'_vn',o.voornamen); set('og'+n+'_an',o.achternaam); set('og'+n+'_em',o.email);
+    set('og'+n+'_tel',o.telefoon_mobiel||o.telefoon_thuis); set('og'+n+'_gbp',o.geboorteplaats); set('og'+n+'_gbd',_dbDatumNL(o.geboortedatum));
+  }
+
+  // producten: eerst catalogus laden, dan de eerder gekozen producten aanvinken
+  await laadProducten();
+  PROD.gekozen = new Set((j.producten||[]).filter(Boolean));
+  renderVeelgebruikt();
+  const zoek=document.getElementById('prod-zoek');
+  renderCatalogus(zoek?zoek.value:'');
+  render();
+}
+
 async function openBouwer(dossierId){
   window.HUIDIG_DOSSIER = dossierId || null;
   document.getElementById('overzicht').classList.remove('actief');
   document.getElementById('bouwer').classList.add('actief');
-  document.getElementById('hdr-titel').textContent="Nieuwe OTD";
+  document.getElementById('hdr-titel').textContent = dossierId ? "Concept bewerken" : "Nieuwe OTD";
   document.getElementById('hdr-badge').textContent="Verkoop";
-  // selectie en laadstatus resetten voor een schone start
-  PROD.gekozen = new Set();
-  document.getElementById('og-extra').innerHTML=''; ogTeller=1;
-  kiesTaal('nl');
+  // schone start
+  wisFormulier();
   const laden = document.getElementById('prod-laden');
   if(laden){ laden.style.display=''; laden.textContent='Producten laden…'; }
   document.getElementById('prod-veel-wrap').style.display='none';
   document.getElementById('prod-cat-wrap').style.display='none';
   ganaarStap(0); render(); laadPanden(); window.scrollTo(0,0);
-  await laadMakelaarKeuze();   // zet eventueel _eigenMakelaarId
-  laadProducten();             // catalogus + (later) geleerde set voor deze makelaar
+  await laadMakelaarKeuze();   // zet eventueel _eigenMakelaarId + directie-dropdown
+  if(dossierId){
+    try{ await laadDossierInBouwer(dossierId); }
+    catch(e){ alert('Kon dit dossier niet laden: '+(e.message||e)); laadProducten(); }
+  } else {
+    laadProducten();           // catalogus + (later) geleerde set voor deze makelaar
+  }
 }
 function naarOverzicht(){
   document.getElementById('bouwer').classList.remove('actief');
@@ -762,6 +848,7 @@ function _verzamelPayload(){
     documenttype:'verkoop',
     taal: state.taal || 'nl',
     makelaar_id: null,
+    dossier_id: window.HUIDIG_DOSSIER || null,
     object_adres: v('i_obj').trim(),
     object_plaats: v('i_plaats') || null,
     object_postcode: v('i_pc') || null,
@@ -855,7 +942,7 @@ function zoekRelatie(){
       if(!rel.length){ box.innerHTML = '<div class="zoek-item muted">Geen relaties gevonden</div>'; return; }
       box.innerHTML = rel.map((r,i) => {
         window._REL[i] = r;
-        const vrij = r.eigenaar ? '' : ' <span class="zoek-vrij">· vrij</span>';
+        const vrij = r.eigenaar ? '' : ' <span class="zoek-vrij">· niet gekoppeld</span>';
         const sub = (r.email || r.telefoon || '') + vrij;
         return '<div class="zoek-item" onclick="kiesRelatie('+i+')"><strong>'+(r.naam||'(naamloos)')+'</strong><span class="zoek-sub">'+sub+'</span></div>';
       }).join('');
