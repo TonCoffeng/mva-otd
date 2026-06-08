@@ -428,15 +428,13 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <option value="percentage">Percentage</option>
             <option value="vast">Vast bedrag</option>
             <option value="vast_pct">Vast bedrag + percentage</option>
-            <option value="vast_pct_meerprijs">Vast bedrag + percentage over meerprijs</option>
-            <option value="pct_pct_meerprijs">Percentage + percentage over meerprijs</option>
-            <option value="pct_vast_meerprijs">Percentage + vast bedrag over meerprijs</option>
-            <option value="vrij">Vrij samenstellen</option>
+            <option value="pct_pct_meerprijs">Percentage + percentage boven de basis</option>
+            <option value="pct_vast_meerprijs">Percentage + vast bedrag boven de basis</option>
           </select>
         </div>
         <div class="fg-row">
-          <div class="fg" id="fg_pct"><label>Percentage basis (incl. BTW)</label><input id="i_pct" oninput="naRekenen()"></div>
-          <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag basis incl. BTW (€)</label><input id="i_vast" oninput="naRekenen()"></div>
+          <div class="fg" id="fg_pct"><label>Percentage over de koopsom (incl. BTW)</label><input id="i_pct" oninput="naRekenen()"></div>
+          <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag (€)</label><input id="i_vast" oninput="naRekenen()"></div>
         </div>
         <div id="fg_meerprijs" style="display:none">
           <div class="fg" id="fg_mptype" style="display:none"><label>Meerprijs-component</label>
@@ -446,8 +444,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             </select>
           </div>
           <div class="fg-row">
-            <div class="fg"><label id="lbl_mp">Percentage over meerprijs (%)</label><input id="i_mp_waarde" oninput="naRekenen()"></div>
-            <div class="fg"><label>Drempel (€) — standaard de vraagprijs</label><input id="i_mp_drempel" placeholder="leeg = vraagprijs" oninput="naRekenen()"></div>
+            <div class="fg"><label id="lbl_mp">Percentage boven de basis (%)</label><input id="i_mp_waarde" oninput="naRekenen()"></div>
+            <div class="fg"><label>Bedrag tot de basis (€)</label><input id="i_mp_drempel" placeholder="leeg = vraagprijs" oninput="naRekenen()"></div>
           </div>
         </div>
         <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
@@ -621,7 +619,7 @@ function kiesTaal(t){state.taal=t;
 const COURTAGE_MODELLEN = {
   percentage:         { basisPct:true,  basisVast:false, mp:null },
   vast:               { basisPct:false, basisVast:true,  mp:null },
-  vast_pct:           { basisPct:true,  basisVast:true,  mp:null },
+  vast_pct:           { basisPct:false, basisVast:true,  mp:'percentage' },
   vast_pct_meerprijs: { basisPct:false, basisVast:true,  mp:'percentage' },
   pct_pct_meerprijs:  { basisPct:true,  basisVast:false, mp:'percentage' },
   pct_vast_meerprijs: { basisPct:true,  basisVast:false, mp:'vast_bedrag' },
@@ -641,7 +639,7 @@ function kiesModel(m){
   document.getElementById('fg_meerprijs').style.display = cfg.mp ? '' : 'none';
   document.getElementById('fg_mptype').style.display = (cfg.mp==='keuze') ? '' : 'none';
   const lbl = document.getElementById('lbl_mp');
-  if(lbl) lbl.textContent = (_mpType()==='vast_bedrag') ? 'Vast bedrag over meerprijs (€)' : 'Percentage over meerprijs (%)';
+  if(lbl) lbl.textContent = (_mpType()==='vast_bedrag') ? 'Vast bedrag boven de basis (€)' : 'Percentage boven de basis (%)';
   naRekenen();
 }
 // terugcompatibel voor eventuele oude aanroepen
@@ -651,10 +649,16 @@ function _num(id){ const el=document.getElementById(id); if(!el) return 0; const
 function berekenCourtage(koopsom){
   const cfg = COURTAGE_MODELLEN[state.court] || {};
   let bedrag = 0;
+  const heeftBasis = !!cfg.mp;
+  const drempel = heeftBasis ? (_num('i_mp_drempel') || _num('i_vp')) : 0;
+  // component tot de basis
   if(cfg.basisVast) bedrag += _num('i_vast');
-  if(cfg.basisPct)  bedrag += _num('i_pct')*koopsom/100;
-  if(cfg.mp){
-    const drempel = _num('i_mp_drempel') || _num('i_vp');
+  if(cfg.basisPct){
+    const grond = heeftBasis ? Math.min(koopsom, drempel) : koopsom;
+    bedrag += _num('i_pct')*grond/100;
+  }
+  // component boven de basis
+  if(heeftBasis){
     const meer = Math.max(0, koopsom - drempel);
     if(meer>0){
       if(_mpType()==='vast_bedrag') bedrag += _num('i_mp_waarde');
@@ -679,14 +683,15 @@ function updateRekenvoorbeeld(){
 }
 function courtageOmschrijving(){
   const cfg = COURTAGE_MODELLEN[state.court] || {};
+  const heeftBasis = !!cfg.mp;
+  const drempel = heeftBasis ? (_num('i_mp_drempel') || _num('i_vp')) : 0;
+  const dTxt = drempel ? ('€ '+Math.round(drempel).toLocaleString('nl-NL')) : 'de basis';
   const delen = [];
-  if(cfg.basisPct && _num('i_pct')) delen.push('<b>'+v('i_pct')+'%</b> over de koopsom');
+  if(cfg.basisPct && _num('i_pct')) delen.push('<b>'+v('i_pct')+'%</b>'+(heeftBasis?(' over het deel tot '+dTxt):' over de koopsom'));
   if(cfg.basisVast && _num('i_vast')) delen.push('een vast bedrag van <b>€ '+v('i_vast')+'</b>');
   if(cfg.mp && _num('i_mp_waarde')){
-    const drempel = _num('i_mp_drempel') || _num('i_vp');
-    const dStr = drempel ? (' boven <b>€ '+Math.round(drempel).toLocaleString('nl-NL')+'</b>') : ' over de meerprijs';
-    if(_mpType()==='vast_bedrag') delen.push('een vast bedrag van <b>€ '+v('i_mp_waarde')+'</b> bij verkoop'+dStr);
-    else delen.push('<b>'+v('i_mp_waarde')+'%</b> over de meerprijs'+dStr);
+    if(_mpType()==='vast_bedrag') delen.push('een vast bedrag van <b>€ '+v('i_mp_waarde')+'</b> bij verkoop boven '+dTxt);
+    else delen.push('<b>'+v('i_mp_waarde')+'%</b> over het deel boven '+dTxt);
   }
   if(!delen.length) return 'De courtage wordt nader bepaald.';
   return 'De courtage bedraagt '+delen.join(' plus ')+', inclusief BTW.';
