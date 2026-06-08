@@ -35,7 +35,7 @@ exports.handler = async (event) => {
     if(!dossierId) return json(400,{error:'Geen dossier opgegeven.'});
 
     // dossier ophalen
-    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,makelaar_id,status,klant_token,object_adres&id=eq.'+encodeURIComponent(dossierId)+'&limit=1',{headers:otdH});
+    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,makelaar_id,status,klant_token,object_adres,taal&id=eq.'+encodeURIComponent(dossierId)+'&limit=1',{headers:otdH});
     const dArr = dRes.ok ? await dRes.json() : [];
     const d = dArr[0];
     if(!d) return json(404,{error:'Opdracht niet gevonden.'});
@@ -75,21 +75,43 @@ exports.handler = async (event) => {
         const aanhef = og.voornamen ? ('Beste ' + og.voornamen) : 'Beste heer/mevrouw';
         const obj = d.object_adres || 'uw woning';
         const makNaam = (mak && (mak.naam || mak.entiteit_naam)) || 'uw makelaar';
+        const makEmail = (mak && mak.email) || 'amsterdam@makelaarsvan.nl';
+        const tweetalig = (d.taal === 'nl_en');
+        const tipsLink = 'https://' + host + '/na-ondertekening.html';
+        const docsBase = 'https://' + host + '/docs/';
         const html =
-          '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#1f2a40">' +
-          '<div style="background:#1b2a4a;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0"><strong style="font-size:15px;letter-spacing:.5px">MAKELAARSVAN AMSTERDAM</strong></div>' +
-          '<div style="border:1px solid #e6e9f0;border-top:none;border-radius:0 0 12px 12px;padding:24px 22px">' +
-          '<p>' + aanhef + ',</p>' +
-          '<p>Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.</p>' +
-          '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#ea580c;color:#fff;text-decoration:none;padding:13px 26px;border-radius:9px;font-weight:bold;display:inline-block">Opdracht bekijken</a></p>' +
-          '<p style="font-size:13px;color:#64748b">Werkt de knop niet? <a href="' + link + '" style="color:#ea580c;font-weight:bold">Open de opdracht voor ' + obj + '</a></p>' +
-          '<p>Met vriendelijke groet,<br>' + makNaam + '</p>' +
-          '</div></div>';
+          '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
+            '<div style="background:#16243f;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f">' +
+              '<strong style="font-size:15px;letter-spacing:1px">MAKELAARSVAN AMSTERDAM</strong></div>' +
+            '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:26px 24px;background:#fffdfa">' +
+              '<p style="margin:0 0 14px">' + aanhef + ',</p>' +
+              '<p style="margin:0 0 14px">Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.</p>' +
+              '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#df5a0f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block">Opdracht bekijken &amp; ondertekenen</a></p>' +
+              '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">Werkt de knop niet? Open dan deze link: <a href="' + link + '" style="color:#df5a0f">' + link + '</a></p>' +
+              '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 18px">' +
+                '<strong style="color:#df5a0f">Identificatie (Wwft)</strong><br>' +
+                'Als makelaar zijn wij wettelijk verplicht onze opdrachtgevers te identificeren. Bij de start vragen wij u zich te legitimeren met een geldig identiteitsbewijs &mdash; wij laten u weten hoe en wanneer dit het makkelijkst kan.' +
+              '</div>' +
+              '<p style="margin:0 0 14px">Benieuwd wat er na ondertekening gebeurt? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Lees hier wat er op u afkomt &rsaquo;</a></p>' +
+              '<p style="margin:0 0 18px">De algemene voorwaarden die bij deze opdracht horen, vindt u als bijlage bij deze e-mail.</p>' +
+              '<p style="margin:0">Met vriendelijke groet,<br><strong>' + makNaam + '</strong><br>' +
+                '<span style="color:#6c7689;font-size:13px">' + makEmail + ' &middot; +31 (0)20 333 11 10</span></p>' +
+            '</div>' +
+            '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
+          '</div>';
+        const attachments = [
+          { filename: 'Algemene-Consumentenvoorwaarden-Makelaardij.pdf', path: docsBase + 'vbo-algemene-consumenten-voorwaarden-juli-2023-19534.pdf' },
+          { filename: 'Uw-eigen-unieke-woningwebsite.pdf', path: docsBase + 'Uw_eigen_unieke_woning_website.pdf' }
+        ];
+        if(tweetalig){
+          attachments.push({ filename: 'General-Terms-and-Conditions-for-Consumers.pdf', path: docsBase + 'General_terms_and_conditions_and_regulations_for_consumers.pdf' });
+        }
         const payload = {
           from: 'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>',
           to: [og.email],
           subject: 'Uw opdracht tot dienstverlening — ' + obj,
-          html: html
+          html: html,
+          attachments: attachments
         };
         if(mak && mak.email) payload.reply_to = mak.email;
         try{

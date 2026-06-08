@@ -68,7 +68,7 @@ exports.handler = async (event) => {
       PostbackUrl: postbackUrl,
       DaysToExpire: 30,
       Language: 'nl-NL',
-      SendEmailNotifications: true       // iedere ondertekenaar (incl. makelaar) krijgt het getekende exemplaar
+      SendEmailNotifications: false      // wij sturen zelf het getekende exemplaar + voorwaarden (via de webhook); Signhost mailt geen kopie
     };
     const cRes = await fetch(SIGNHOST_BASE+'/transaction', {
       method:'POST',
