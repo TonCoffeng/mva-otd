@@ -62,6 +62,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .chip-concept{background:#fef3c7;color:#92400e} .chip-aangeboden{background:#dbeafe;color:#1e40af} .chip-getekend{background:#d1fae5;color:#065f46}
 
 .ov-kop-rij{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 12px}
+.dossier-zoek{width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--grijs-mid);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:14px;background:#fff}
+.dossier-zoek:focus{outline:none;border-color:var(--navy)}
 .nieuw-btn{background:var(--oranje);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(232,80,10,.35);transition:transform .12s,background .2s;white-space:nowrap}
 .nieuw-btn:active{transform:scale(.96);background:var(--oranje-light)}
 
@@ -108,8 +110,6 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 
 .courtage-keuze{display:flex;gap:8px;margin-bottom:14px}
 .reken-box{background:#eef3fb;border:1px solid #d6dfee;border-radius:10px;padding:12px 14px;margin:2px 0 14px}
-.btn-bereken{background:var(--navy);color:#fff;border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin:2px 0 12px;transition:background .15s}
-.btn-bereken:active{transform:scale(.98)}
 .rb-titel{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);font-weight:700;margin-bottom:8px}
 .rb-rij{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;padding:3px 0;color:#33405a}
 .rb-rij b{color:var(--navy)}
@@ -258,6 +258,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
     <button class="nieuw-btn" onclick="openBouwer()">＋ Nieuwe OTD</button>
   </div>
 
+  <input id="dossier-zoek" class="dossier-zoek" placeholder="Zoek op object of klantnaam…" oninput="filterDossiers()">
   <div id="dossier-lijst"></div>
 
   <div id="link-modal" class="ov-modal">
@@ -449,7 +450,6 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           </div>
         </div>
         <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
-        <button type="button" class="btn-bereken" onclick="berekenKnop()">Bereken courtage</button>
         <div id="reken-box" class="reken-box" style="display:none"></div>
         <div class="fg"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
@@ -1169,8 +1169,10 @@ async function laadDossiers(){
     lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rood)">Kon dossiers niet laden: '+(e.message||e)+'</div>';
   }
 }
+let ALLE_DOSSIERS = [];
 function renderDossiers(json){
   const dossiers = json.dossiers || [];
+  ALLE_DOSSIERS = dossiers;
   document.getElementById('overzicht-titel').textContent =
     (json.rol === 'directie') ? 'Alle opdrachten' : 'Mijn opdrachten';
   document.getElementById('hdr-badge').textContent =
@@ -1180,9 +1182,24 @@ function renderDossiers(json){
   document.getElementById('stat-concept').textContent = tel.concept;
   document.getElementById('stat-aangeboden').textContent = tel.aangeboden;
   document.getElementById('stat-ondertekend').textContent = tel.ondertekend;
+  const zoek = document.getElementById('dossier-zoek'); if(zoek) zoek.value='';
+  tekenDossierKaarten(dossiers);
+}
+function filterDossiers(){
+  const q = (document.getElementById('dossier-zoek').value||'').toLowerCase().trim();
+  if(!q){ tekenDossierKaarten(ALLE_DOSSIERS); return; }
+  const f = ALLE_DOSSIERS.filter(d =>
+    ((d.object_adres||'')+' '+(d.object_plaats||'')+' '+(d.opdrachtgever||'')).toLowerCase().includes(q));
+  tekenDossierKaarten(f);
+}
+function tekenDossierKaarten(dossiers){
   const lijst = document.getElementById('dossier-lijst');
+  if(!ALLE_DOSSIERS.length){
+    lijst.innerHTML = '<div style="padding:28px;text-align:center;color:var(--grijs-tekst)">Nog geen opdrachten. Maak je eerste OTD met de knop hierboven.</div>';
+    return;
+  }
   if(!dossiers.length){
-    lijst.innerHTML = '<div style="padding:28px;text-align:center;color:var(--grijs-tekst)">Nog geen opdrachten. Maak je eerste OTD met de knop hieronder.</div>';
+    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Geen opdrachten gevonden voor deze zoekopdracht.</div>';
     return;
   }
   lijst.innerHTML = dossiers.map(d => {
