@@ -40,6 +40,7 @@ exports.handler = async (event) => {
         documenttype:d.documenttype, taal:d.taal, object_adres:d.object_adres, object_postcode:d.object_postcode, object_plaats:d.object_plaats,
         bestemming:d.bestemming, in_gebruik_als:d.in_gebruik_als, bouwvorm:d.bouwvorm, soort_object:d.soort_object, vraagprijs:d.vraagprijs,
         courtage_type:d.courtage_type, courtage_pct_incl:d.courtage_pct_incl, courtage_vast_bedrag:d.courtage_vast_bedrag,
+        courtage_model:d.courtage_model, courtage_meerprijs_waarde:d.courtage_meerprijs_waarde, courtage_meerprijs_type:d.courtage_meerprijs_type, courtage_meerprijs_drempel:d.courtage_meerprijs_drempel,
         datum_opdracht:d.datum_opdracht, looptijd:d.looptijd, bijzonderheden:d.bijzonderheden,
         status:d.status, klant_reactie:d.klant_reactie
       };

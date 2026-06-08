@@ -9,9 +9,25 @@ const OTD_SERVICE_KEY = process.env.OTD_SERVICE_KEY;
 
 function datumNL(s){ if(!s) return ''; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m? m[3]+'-'+m[2]+'-'+m[1] : s; }
 function courtageTekst(d){
-  if(d.courtage_type==='percentage' && d.courtage_pct_incl!=null) return String(d.courtage_pct_incl).replace('.',',')+'% incl. btw van de verkoopprijs';
-  if(d.courtage_vast_bedrag!=null) return '€ '+Number(d.courtage_vast_bedrag).toLocaleString('nl-NL')+' incl. btw (vast)';
-  return '—';
+  const eN = n => '\u20AC '+Number(n||0).toLocaleString('nl-NL');
+  const heeftMp = d.courtage_meerprijs_waarde!=null && Number(d.courtage_meerprijs_waarde)>0;
+  const drempel = (d.courtage_meerprijs_drempel!=null && Number(d.courtage_meerprijs_drempel)>0)
+      ? Number(d.courtage_meerprijs_drempel)
+      : (d.vraagprijs!=null && d.vraagprijs!=='' ? Number(d.vraagprijs) : 0);
+  const dTxt = drempel ? eN(drempel) : 'de basis';
+  const delen = [];
+  if(d.courtage_pct_incl!=null && Number(d.courtage_pct_incl)>0)
+    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):'van de verkoopprijs'));
+  if(d.courtage_vast_bedrag!=null && Number(d.courtage_vast_bedrag)>0)
+    delen.push('een vast bedrag van '+eN(d.courtage_vast_bedrag));
+  if(heeftMp){
+    if(d.courtage_meerprijs_type==='vast_bedrag')
+      delen.push('een vast bedrag van '+eN(d.courtage_meerprijs_waarde)+' bij verkoop boven '+dTxt);
+    else
+      delen.push(String(d.courtage_meerprijs_waarde).replace('.',',')+'% over het deel boven '+dTxt);
+  }
+  if(!delen.length) return 'nader te bepalen';
+  return 'De courtage bedraagt '+delen.join(' plus ')+', inclusief btw.';
 }
 
 async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
@@ -62,7 +78,11 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   if(ogs.length){ ogs.forEach(o=>{ const naam=[o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' ')||'—'; rij(naam,[o.email,o.telefoon_mobiel].filter(Boolean).join('  ·  ')); }); } else rij('—','');
   y-=8;
 
-  sectie('Courtage & voorwaarden','Fee & terms'); rij('Courtage',courtageTekst(d),'Fee'); rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term'); y-=8;
+  sectie('Courtage & voorwaarden','Fee & terms');
+  txt(tw?'Courtage / Fee':'Courtage', M, y, {size:tw?9:10.5, color:grijs}); y-=15;
+  wrap(courtageTekst(d), W);
+  y-=3;
+  rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term'); y-=8;
   if(d.bijzonderheden){ sectie('Bijzonderheden','Additional details'); wrap(d.bijzonderheden,W); y-=8; }
 
   // Woningpromotieplan (gekozen diensten + totaal)
