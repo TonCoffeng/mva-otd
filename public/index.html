@@ -519,7 +519,13 @@ function veelgebruikteProducten(){
     const uit = PROD.geleerd.map(id=>idx[id]).filter(Boolean).slice(0,10);
     if(uit.length) return uit;
   }
-  return PROD.alle.filter(p=>p.snelkeuze!=null).sort((a,b)=>a.snelkeuze-b.snelkeuze);
+  // KERN-set op basis van snelkeuze (Tier 1), numeriek gesorteerd
+  const kern = PROD.alle
+    .filter(p=>p.snelkeuze!==null && p.snelkeuze!==undefined && p.snelkeuze!=='')
+    .sort((a,b)=>Number(a.snelkeuze)-Number(b.snelkeuze));
+  if(kern.length) return kern;
+  // Vangnet: nooit een lege sectie tonen (bv. als 'snelkeuze' niet meekomt uit de backend)
+  return PROD.alle.slice(0,8);
 }
 
 function renderVeelgebruikt(){
