@@ -320,6 +320,12 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <div class="fg" id="fg_makelaar" style="display:none"><label>Opdracht namens makelaar</label>
           <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
         </div>
+        <div class="fg"><label>Soort opdracht</label>
+          <div class="courtage-keuze" id="doctype-keuze">
+            <div class="ckeuze aan" data-doctype="verkoop" onclick="kiesDoctype('verkoop')">Verkoop</div>
+            <div class="ckeuze" data-doctype="aankoop" onclick="kiesDoctype('aankoop')">Aankoop</div>
+          </div>
+        </div>
         <div class="fg"><label>Taal van de opdracht</label>
           <div class="courtage-keuze" id="taal-keuze">
             <div class="ckeuze aan" data-taal="nl" onclick="kiesTaal('nl')">Nederlands</div>
@@ -376,6 +382,22 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
               <option>Leegstaand</option>
               <option>Anders</option>
             </select>
+          </div>
+        </div>
+        <div id="aankoop-zoek" style="display:none">
+          <div class="sec-p">Zoekprofiel van de koper — vul in wat bekend is.</div>
+          <div class="fg-row">
+            <div class="fg"><label>Max. budget (€)</label><input id="z_maxprijs" oninput="render()"></div>
+            <div class="fg"><label>Type woning</label><input id="z_type" placeholder="bijv. appartement" oninput="render()"></div>
+          </div>
+          <div class="fg"><label>Zoekgebied / locatie</label><input id="z_locatie" placeholder="bijv. Amsterdam Oud-West" oninput="render()"></div>
+          <div class="fg-row">
+            <div class="fg"><label>Gewenste oppervlakte</label><input id="z_oppervlakte" placeholder="bijv. vanaf 70 m\u00b2" oninput="render()"></div>
+            <div class="fg"><label>Aantal kamers</label><input id="z_kamers" placeholder="bijv. 3+" oninput="render()"></div>
+          </div>
+          <div class="fg-row">
+            <div class="fg"><label>Buitenruimte</label><input id="z_buiten" placeholder="bijv. balkon / tuin" oninput="render()"></div>
+            <div class="fg"><label>Overige wensen</label><input id="z_overig" oninput="render()"></div>
           </div>
         </div>
         <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
@@ -458,7 +480,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <div class="fg"><label>Bedrag tot de basis (€)</label><input id="i_mp_drempel" placeholder="leeg = vraagprijs" oninput="naRekenen()"></div>
           </div>
         </div>
-        <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
+        <div class="fg" id="fg_vp"><label id="lbl_vp">Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
         <div id="reken-box" class="reken-box" style="display:none"></div>
         <div class="fg"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
@@ -625,6 +647,18 @@ function tog(k){state.t[k]=state.t[k]?0:1;
   document.querySelector(`[data-t="${k}"]`).classList.toggle('aan',!!state.t[k]); render()}
 function kiesTaal(t){state.taal=t;
   document.querySelectorAll('#taal-keuze .ckeuze').forEach(e=>e.classList.toggle('aan',e.dataset.taal===t)); render();}
+function laatsteStap(){ return (state.documenttype==='aankoop') ? 2 : 3; }
+function kiesDoctype(dt){
+  state.documenttype = dt;
+  document.querySelectorAll('#doctype-keuze .ckeuze').forEach(e=>e.classList.toggle('aan', e.dataset.doctype===dt));
+  const aankoop = (dt==='aankoop');
+  const zk=document.getElementById('aankoop-zoek'); if(zk) zk.style.display = aankoop?'block':'none';
+  const bord=document.querySelector('.toggle[data-t="bord"]'); if(bord) bord.style.display = aankoop?'none':'';
+  const step3=document.querySelector('.step[data-step="3"]'); if(step3) step3.style.display = aankoop?'none':'';
+  const lbl=document.getElementById('lbl_vp'); if(lbl) lbl.textContent = aankoop ? 'Verwachte koopsom (\u20ac)' : 'Vraagprijs (\u20ac)';
+  if(state.stap > laatsteStap()) ganaarStap(laatsteStap());
+  render();
+}
 const COURTAGE_MODELLEN = {
   percentage:         { basisPct:true,  basisVast:false, mp:null },
   vast:               { basisPct:false, basisVast:true,  mp:null },
@@ -790,6 +824,28 @@ function render(){
   let pkHtml = gekozen.map(p=>`
       <div class="pv-pkrow"><span>${_naamVan(p)}</span><span>${euro(_prijsVan(p))}</span></div>`).join("");
   if(!gekozen.length) pkHtml=`<div class="pv-pkitem">Nog geen diensten geselecteerd.</div>`;
+  const _isAankoop = (state.documenttype==='aankoop');
+  const objectBlok = _isAankoop ? `
+    <h4>Zoekprofiel</h4>
+    <div class="kv"><span class="k">Max. budget</span><span>${v('z_maxprijs')?('€ '+v('z_maxprijs')):'—'}</span></div>
+    <div class="kv"><span class="k">Type woning</span><span>${v('z_type')||'—'}</span></div>
+    <div class="kv"><span class="k">Locatie</span><span>${v('z_locatie')||'—'}</span></div>
+    <div class="kv"><span class="k">Oppervlakte</span><span>${v('z_oppervlakte')||'—'}</span></div>
+    <div class="kv"><span class="k">Kamers</span><span>${v('z_kamers')||'—'}</span></div>
+    <div class="kv"><span class="k">Buitenruimte</span><span>${v('z_buiten')||'—'}</span></div>
+    <div class="kv"><span class="k">Overige wensen</span><span>${v('z_overig')||'—'}</span></div>
+    <div class="kv"><span class="k">Verwachte koopsom</span><span>${v('i_vp')?('€ '+v('i_vp')+' k.k.'):'—'}</span></div>` : `
+    <h4>Object</h4>
+    <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
+    <div class="kv"><span class="k">Soort object</span><span>${soortObjectWaarde()||'—'}</span></div>
+    <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')||'—'}</span></div>
+    <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')||'—'}</span></div>
+    <div class="kv"><span class="k">Vraagprijs</span><span>€ ${v('i_vp')} k.k.</span></div>`;
+  const promotieBlok = _isAankoop ? '' : `<div class="pv-pakket">
+      <h4 style="margin-top:0">Woningpromotieplan</h4>
+      ${pkHtml}
+      <div class="pv-tot"><span>Totaal</span><span>${euro(prodTotaal())}</span></div>
+    </div>`;
 
   document.getElementById('a4').innerHTML=`
     <span class="preview-label">live preview</span>
@@ -799,23 +855,14 @@ function render(){
     <h4>Opdrachtgever${ogs.length>1?'s':''}</h4>
     ${ogHtml||'<div class="kv"><span class="k">Naam</span><span>—</span></div>'}
     <div class="pv-wwft">Na ondertekening wordt automatisch het verplichte cliëntenonderzoek uitgevoerd. De opdracht wordt pas actief in behandeling genomen nadat de benodigde controles en dossiergegevens volledig zijn verwerkt.</div>
-    <h4>Object</h4>
-    <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
-    <div class="kv"><span class="k">Soort object</span><span>${soortObjectWaarde()||'—'}</span></div>
-    <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')||'—'}</span></div>
-    <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')||'—'}</span></div>
-    <div class="kv"><span class="k">Vraagprijs</span><span>€ ${v('i_vp')} k.k.</span></div>
+    ${objectBlok}
     <div class="kv"><span class="k">Aanvaarding</span><span>${v('i_aanv')}</span></div>
     <h4>Kosten en courtage</h4>
     <div class="pv-court">${court}</div>
     <div class="kv"><span class="k">Opstartkosten</span><span>betaalwijze: ${v('i_term')}</span></div>
     <h4>Afspraken</h4>
     ${vinkjes}
-    <div class="pv-pakket">
-      <h4 style="margin-top:0">Woningpromotieplan</h4>
-      ${pkHtml}
-      <div class="pv-tot"><span>Totaal</span><span>${euro(prodTotaal())}</span></div>
-    </div>`;
+    ${promotieBlok}`;
   document.getElementById('prod-totaal').textContent=euro(prodTotaal());
 }
 
@@ -827,18 +874,19 @@ function ganaarStap(n){
   });
   document.querySelectorAll('.veld-sec').forEach((s,i)=>s.classList.toggle('actief',i===n));
   document.getElementById('btn-vorige').style.display = n>0?'block':'none';
-  document.getElementById('btn-volgende').style.display = n<3?'block':'none';
-  document.getElementById('btn-verstuur').style.display = n===3?'block':'none';
-  const vt=document.getElementById('btn-verstuur-top'); if(vt) vt.style.display = n===3?'inline-flex':'none';
+  document.getElementById('btn-volgende').style.display = n<laatsteStap()?'block':'none';
+  document.getElementById('btn-verstuur').style.display = n===laatsteStap()?'block':'none';
+  const vt=document.getElementById('btn-verstuur-top'); if(vt) vt.style.display = n===laatsteStap()?'inline-flex':'none';
   document.querySelector('.invoer').scrollTop=0;
 }
-function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
+function volgende(){if(state.stap<laatsteStap())ganaarStap(state.stap+1)}
 function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 
 // alle invoervelden terug naar een schone staat (voor een nieuwe OTD)
 function wisFormulier(){
   ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
-   'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel'].forEach(id=>{
+   'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel',
+   'z_maxprijs','z_type','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   ['i_bouwvorm','i_soort','i_best','i_gebr','i_herkomst','i_reden'].forEach(id=>{
@@ -855,6 +903,7 @@ function wisFormulier(){
   const _mpt0=document.getElementById('i_mp_type'); if(_mpt0) _mpt0.value='percentage';
   kiesModel('percentage');
   kiesTaal('nl');
+  kiesDoctype('verkoop');
 }
 
 // helpers voor terugladen
@@ -901,6 +950,14 @@ async function laadDossierInBouwer(id){
   set('i_mp_waarde', _numVeld(d.courtage_meerprijs_waarde));
   set('i_mp_drempel', _numVeld(d.courtage_meerprijs_drempel));
   set('i_vp', _numVeld(d.vraagprijs));
+  set('z_maxprijs', d.zoek_max_prijs);
+  set('z_type', d.zoek_type);
+  set('z_locatie', d.zoek_locatie);
+  set('z_oppervlakte', d.zoek_oppervlakte);
+  set('z_kamers', d.zoek_aantal_kamers);
+  set('z_buiten', d.zoek_buitenruimte);
+  set('z_overig', d.zoek_overig);
+  kiesDoctype(d.documenttype==='aankoop'?'aankoop':'verkoop');
   kiesModel(_model);
   set('i_cloze', d.cloze_id);
 
@@ -981,7 +1038,7 @@ function _verzamelPayload(){
   const nu = new Date();
   const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
   return {
-    documenttype:'verkoop',
+    documenttype: state.documenttype || 'verkoop',
     taal: state.taal || 'nl',
     makelaar_id: null,
     dossier_id: window.HUIDIG_DOSSIER || null,
@@ -1001,6 +1058,13 @@ function _verzamelPayload(){
     courtage_meerprijs_type: _mpType(),
     courtage_meerprijs_drempel: v('i_mp_drempel'),
     vraagprijs: v('i_vp'),
+    zoek_max_prijs: v('z_maxprijs') || null,
+    zoek_type: v('z_type') || null,
+    zoek_locatie: v('z_locatie') || null,
+    zoek_oppervlakte: v('z_oppervlakte') || null,
+    zoek_aantal_kamers: v('z_kamers') || null,
+    zoek_buitenruimte: v('z_buiten') || null,
+    zoek_overig: v('z_overig') || null,
     datum_opdracht: vandaag,
     cloze_id: v('i_cloze') || null,
     herkomst: v('i_herkomst') || null,
@@ -1011,7 +1075,7 @@ function _verzamelPayload(){
 }
 async function _slaOpConcept(){
   const obj = v('i_obj').trim();
-  if(!obj){ alert('Vul minimaal een objectadres in.'); return null; }
+  if(state.documenttype!=='aankoop' && !obj){ alert('Vul minimaal een objectadres in.'); return null; }
   const fgMak = document.getElementById('fg_makelaar');
   let makelaarId = null;
   if(fgMak && fgMak.style.display !== 'none'){
