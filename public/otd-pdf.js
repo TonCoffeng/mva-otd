@@ -112,7 +112,19 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   const BEP_SET = (d.documenttype==='aankoop' && typeof BEPALINGEN_AANKOOP!=='undefined' && BEPALINGEN_AANKOOP.length) ? BEPALINGEN_AANKOOP : BEPALINGEN_VERKOOP;
   if(BEP_SET && BEP_SET.length){
     const vraagprijs = euro(d.vraagprijs);
-    const merge = (s,en)=> String(s).replace(/\{VRAAGPRIJS\}/g, vraagprijs).replace(/\{AANVULLEND\}/g, d.bijzonderheden ? String(d.bijzonderheden) : (en?'none':'geen'));
+    // Beëindiging aankoop: standaard AAN = geen kosten behoudens daadwerkelijk gemaakte kosten (Effytool 3f).
+    // Makelaar kan dit later in de bouwer uitzetten (geen_beeindigingskosten===false) → standaard regime.
+    const isAankoopBep = (d.documenttype==='aankoop');
+    const geenBeeindiging = isAankoopBep && (d.geen_beeindigingskosten !== false);
+    const BEEIND_NL = 'Indien blijkt dat de Opdracht niet kan worden vervuld, kan de Opdrachtgever deze overeenkomst beëindigen zonder betaling van kosten, met uitzondering van daadwerkelijk gemaakte kosten zoals taxaties, bouwkundige keuringen en dergelijke. Deze kosten dienen te worden onderbouwd met facturen. Opzegging dient schriftelijk te geschieden per e-mail of brief.';
+    const BEEIND_EN = 'If it appears that the Instruction cannot be fulfilled, the Client may terminate this agreement without payment of costs, with the exception of costs actually incurred such as appraisals, structural inspections and the like. These costs must be substantiated with invoices. Termination must be given in writing by e-mail or letter.';
+    const HARSH_NL = 'evenredig is aan het gedeelte van de verbintenis';
+    const HARSH_EN = 'proportional to the part of the obligation';
+    const merge = (s,en)=>{
+      const str = String(s);
+      if(geenBeeindiging && (str.indexOf(HARSH_NL)>=0 || str.indexOf(HARSH_EN)>=0)) return en?BEEIND_EN:BEEIND_NL;
+      return str.replace(/\{VRAAGPRIJS\}/g, vraagprijs).replace(/\{AANVULLEND\}/g, d.bijzonderheden ? String(d.bijzonderheden) : (en?'none':'geen'));
+    };
     const bepTekst = (s,opt={})=>{ const size=opt.size||9.5, fnt=opt.bold?bold:font, kleur=opt.color||zwart, indent=opt.indent||0;
       const woorden=safe(s).split(/\s+/); let line='';
       woorden.forEach(w=>{ const t=line?line+' '+w:w; if(fnt.widthOfTextAtSize(t,size)>(W-indent)){ nieuw(80); txt(line,M+indent,y,{size,bold:opt.bold,color:kleur}); y-=size+3.2; line=w; } else line=t; });

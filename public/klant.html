@@ -122,10 +122,20 @@ function renderBepalingen(d){
   const BEP = (d.documenttype==='aankoop' && Array.isArray(BEPALINGEN_AANKOOP) && BEPALINGEN_AANKOOP.length) ? BEPALINGEN_AANKOOP : BEPALINGEN_VERKOOP;
   if(!Array.isArray(BEP) || !BEP.length) return '';
   const vp = euro(d.vraagprijs) || '—';
-  const mrg = (s,en)=> String(s)
+  // Beëindiging aankoop: standaard AAN = geen kosten behoudens daadwerkelijk gemaakte kosten (Effytool 3f).
+  const geenBeeindiging = (d.documenttype==='aankoop') && (d.geen_beeindigingskosten !== false);
+  const BEEIND_NL = 'Indien blijkt dat de Opdracht niet kan worden vervuld, kan de Opdrachtgever deze overeenkomst beëindigen zonder betaling van kosten, met uitzondering van daadwerkelijk gemaakte kosten zoals taxaties, bouwkundige keuringen en dergelijke. Deze kosten dienen te worden onderbouwd met facturen. Opzegging dient schriftelijk te geschieden per e-mail of brief.';
+  const BEEIND_EN = 'If it appears that the Instruction cannot be fulfilled, the Client may terminate this agreement without payment of costs, with the exception of costs actually incurred such as appraisals, structural inspections and the like. These costs must be substantiated with invoices. Termination must be given in writing by e-mail or letter.';
+  const HARSH_NL = 'evenredig is aan het gedeelte van de verbintenis';
+  const HARSH_EN = 'proportional to the part of the obligation';
+  const mrg = (s,en)=>{
+    const str = String(s);
+    if(geenBeeindiging && (str.indexOf(HARSH_NL)>=0 || str.indexOf(HARSH_EN)>=0)) return en?BEEIND_EN:BEEIND_NL;
+    return str
       .replace(/\{VRAAGPRIJS\}/g, vp)
       .replace(/\{AANVULLEND\}/g, d.bijzonderheden ? d.bijzonderheden : (en?'none':'geen'))
       .replace(/[\u2610\u2611\u2612\u25A1]/g, '[ ]');
+  };
   let h = '<div class="bepalingen'+(TW?' tw':'')+'">';
   h += '<div class="bep-titel"><span class="bep-titel-nl">'+esc(L('Algemene bepalingen','General provisions'))+'</span></div>';
   h += '<div class="bep-intro">'+esc(L('Onderstaande voorwaarden maken integraal deel uit van deze opdracht tot dienstverlening.','The following terms form an integral part of this instruction.'))+'</div>';
