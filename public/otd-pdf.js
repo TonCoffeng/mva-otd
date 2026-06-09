@@ -17,14 +17,17 @@ function courtageTekst(d){
       ? Number(d.courtage_meerprijs_drempel)
       : (d.vraagprijs!=null && d.vraagprijs!=='' ? Number(d.vraagprijs) : 0);
   const dTxt = drempel ? eN(drempel) : 'de basis';
+  const isAankoop = d.documenttype==='aankoop';
+  const grondslag = isAankoop ? 'van de koopsom' : 'van de verkoopprijs';
+  const bovenTxt = isAankoop ? 'bij koopsom boven ' : 'bij verkoop boven ';
   const delen = [];
   if(d.courtage_pct_incl!=null && Number(d.courtage_pct_incl)>0)
-    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):'van de verkoopprijs'));
+    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):grondslag));
   if(d.courtage_vast_bedrag!=null && Number(d.courtage_vast_bedrag)>0)
     delen.push('een vast bedrag van '+eN(d.courtage_vast_bedrag));
   if(heeftMp){
     if(d.courtage_meerprijs_type==='vast_bedrag')
-      delen.push('een vast bedrag van '+eN(d.courtage_meerprijs_waarde)+' bij verkoop boven '+dTxt);
+      delen.push('een vast bedrag van '+eN(d.courtage_meerprijs_waarde)+' '+bovenTxt+dTxt);
     else
       delen.push(String(d.courtage_meerprijs_waarde).replace('.',',')+'% over het deel boven '+dTxt);
   }
@@ -70,11 +73,12 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   txt((m.entiteit_naam||'MakelaarsVan Amsterdam')+(d.datum_opdracht?('   ·   '+datumNL(d.datum_opdracht)):''),M,y,{size:9.5,color:grijs}); y-=22;
   page.drawLine({start:{x:M,y},end:{x:M+W,y},thickness:1,color:rgb(0.9,0.92,0.95)}); y-=24;
 
-  sectie('Object','Property');
-  rij('Adres',[d.object_adres,[d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '),'Address');
+  const isAankoopPdf = (d.documenttype==='aankoop');
+  sectie(isAankoopPdf?'Zoekprofiel':'Object', isAankoopPdf?'Search profile':'Property');
+  rij(isAankoopPdf?'Zoekgebied':'Adres',[d.object_adres,[d.object_postcode,d.object_plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '),isAankoopPdf?'Search area':'Address');
   if(d.bouwvorm) rij('Bouwvorm',Vw(d.bouwvorm),'Construction');
   if(d.soort_object) rij('Soort object',Vw(d.soort_object),'Property type');
-  rij('Bestemming',Vw(d.bestemming),'Designated use'); rij('In gebruik als',Vw(d.in_gebruik_als),'Current use'); rij('Vraagprijs',euro(d.vraagprijs),'Asking price'); y-=8;
+  rij('Bestemming',Vw(d.bestemming),'Designated use'); rij('In gebruik als',Vw(d.in_gebruik_als),'Current use'); rij(isAankoopPdf?'Maximaal budget':'Vraagprijs',euro(d.vraagprijs),isAankoopPdf?'Maximum budget':'Asking price'); y-=8;
 
   sectie('Opdrachtgever'+(ogs.length>1?'s':''), ogs.length>1?'Clients':'Client');
   if(ogs.length){ ogs.forEach(o=>{ const naam=[o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' ')||'—'; rij(naam,[o.email,o.telefoon_mobiel].filter(Boolean).join('  ·  ')); }); } else rij('—','');
@@ -87,8 +91,8 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term'); y-=8;
   if(d.bijzonderheden){ sectie('Bijzonderheden','Additional details'); wrap(d.bijzonderheden,W); y-=8; }
 
-  // Woningpromotieplan (gekozen diensten + totaal)
-  if(rgs.length){
+  // Woningpromotieplan (gekozen diensten + totaal) — alleen verkoop
+  if(rgs.length && d.documenttype!=='aankoop'){
     const euro2 = n => '€ '+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
     const prijsRij = (naam, prijs, opt={}) => {
       nieuw(90);

@@ -148,14 +148,17 @@ function courtageTekst(d){
       ? Number(d.courtage_meerprijs_drempel)
       : (d.vraagprijs!=null && d.vraagprijs!=='' ? Number(d.vraagprijs) : 0);
   const dTxt = drempel ? euro(drempel) : 'de basis';
+  const isAankoop = d.documenttype==='aankoop';
+  const grondslag = isAankoop ? 'van de koopsom' : 'van de verkoopprijs';
+  const bovenTxt = isAankoop ? 'bij koopsom boven ' : 'bij verkoop boven ';
   const delen = [];
   if(d.courtage_pct_incl!=null && Number(d.courtage_pct_incl)>0)
-    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):'van de verkoopprijs'));
+    delen.push(String(d.courtage_pct_incl).replace('.',',')+'% '+(heeftMp?('over het deel tot '+dTxt):grondslag));
   if(d.courtage_vast_bedrag!=null && Number(d.courtage_vast_bedrag)>0)
     delen.push('een vast bedrag van '+euro(d.courtage_vast_bedrag));
   if(heeftMp){
     if(d.courtage_meerprijs_type==='vast_bedrag')
-      delen.push('een vast bedrag van '+euro(d.courtage_meerprijs_waarde)+' bij verkoop boven '+dTxt);
+      delen.push('een vast bedrag van '+euro(d.courtage_meerprijs_waarde)+' '+bovenTxt+dTxt);
     else
       delen.push(String(d.courtage_meerprijs_waarde).replace('.',',')+'% over het deel boven '+dTxt);
   }
@@ -224,13 +227,14 @@ function render(j){
     + '<div class="meta">'+(m.entiteit_naam? esc(m.entiteit_naam) : 'MakelaarsVan Amsterdam')+(d.datum_opdracht? ' · '+datumNL(d.datum_opdracht):'')+'</div>'
     + '</div>';
 
-  html += '<div class="sec"><h2>'+esc(L('Object','Property'))+'</h2>'
-    + rij(L('Adres','Address'), adres)
+  const isAankoop = d.documenttype==='aankoop';
+  html += '<div class="sec"><h2>'+esc(isAankoop?L('Zoekprofiel','Search profile'):L('Object','Property'))+'</h2>'
+    + rij(isAankoop?L('Zoekgebied','Search area'):L('Adres','Address'), adres)
     + rij(L('Bouwvorm','Construction'), Vw(d.bouwvorm))
     + rij(L('Soort object','Property type'), Vw(d.soort_object))
     + rij(L('Bestemming','Designated use'), Vw(d.bestemming))
     + rij(L('In gebruik als','Current use'), Vw(d.in_gebruik_als))
-    + rij(L('Vraagprijs','Asking price'), euro(d.vraagprijs)) + '</div>';
+    + rij(isAankoop?L('Maximaal budget','Maximum budget'):L('Vraagprijs','Asking price'), euro(d.vraagprijs)) + '</div>';
 
   html += '<div class="sec"><h2>'+esc(L('Opdrachtgever'+(og.length>1?'s':''), og.length>1?'Clients':'Client'))+'</h2>'
     + '<div class="personen">'+(og.length? og.map(persoonBlok).join('') : '<div class="rij"><span class="k">—</span></div>')+'</div></div>';
@@ -244,7 +248,7 @@ function render(j){
   }
 
   const regels = j.regels || [];
-  if(regels.length){
+  if(regels.length && !isAankoop){
     const euro2 = n => '€ '+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
     let tot=0;
     const rows = regels.map(r=>{ const p=Number(r.prijs||0); tot+=p; return '<div class="plan-rij"><span class="pn">'+esc(r.naam||'—')+'</span><span class="pp">'+euro2(p)+'</span></div>'; }).join('');
