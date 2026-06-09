@@ -51,6 +51,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .chip{font-size:11px;padding:3px 11px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block;margin-top:4px}
 .kaart-knop{margin-top:8px;background:var(--oranje);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .kaart-knop:hover{filter:brightness(.95)}
+.kaart-knop.ghost{background:#eef0f4;color:var(--navy)}
 .ov-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;padding:18px}
 .ov-box{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .ov-box h3{margin:0 0 6px;color:var(--navy);font-size:18px}
@@ -64,6 +65,11 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .ov-kop-rij{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 12px}
 .dossier-zoek{width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--grijs-mid);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:14px;background:#fff}
 .dossier-zoek:focus{outline:none;border-color:var(--navy)}
+.zoek-rij{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.zoek-rij .dossier-zoek{flex:1;min-width:200px;margin-bottom:0}
+.arch-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--grijs-tekst);white-space:nowrap;cursor:pointer}
+.otd-card.gearchiveerd{opacity:.6}
+.chip.arch{background:#e6e9f0;color:#5b6577}
 .nieuw-btn{background:var(--oranje);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(232,80,10,.35);transition:transform .12s,background .2s;white-space:nowrap}
 .nieuw-btn:active{transform:scale(.96);background:var(--oranje-light)}
 
@@ -258,7 +264,10 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
     <button class="nieuw-btn" onclick="openBouwer()">＋ Nieuwe OTD</button>
   </div>
 
-  <input id="dossier-zoek" class="dossier-zoek" placeholder="Zoek op object of klantnaam…" oninput="filterDossiers()">
+  <div class="zoek-rij">
+    <input id="dossier-zoek" class="dossier-zoek" placeholder="Zoek op object of klantnaam…" oninput="filterDossiers()">
+    <label class="arch-toggle"><input type="checkbox" id="toon-archief" onchange="filterDossiers()"> Gearchiveerde tonen</label>
+  </div>
   <div id="dossier-lijst"></div>
 
   <div id="link-modal" class="ov-modal">
@@ -1171,26 +1180,32 @@ async function laadDossiers(){
 }
 let ALLE_DOSSIERS = [];
 function renderDossiers(json){
-  const dossiers = json.dossiers || [];
-  ALLE_DOSSIERS = dossiers;
+  ALLE_DOSSIERS = json.dossiers || [];
   document.getElementById('overzicht-titel').textContent =
     (json.rol === 'directie') ? 'Alle opdrachten' : 'Mijn opdrachten';
+  const zoek = document.getElementById('dossier-zoek'); if(zoek) zoek.value='';
+  const tog = document.getElementById('toon-archief'); if(tog) tog.checked=false;
+  verversStatsEnLijst();
+}
+function verversStatsEnLijst(){
+  const actief = ALLE_DOSSIERS.filter(d => !d.gearchiveerd);
   document.getElementById('hdr-badge').textContent =
-    dossiers.length + ' dossier' + (dossiers.length===1?'':'s');
+    actief.length + ' dossier' + (actief.length===1?'':'s');
   const tel = { concept:0, aangeboden:0, ondertekend:0 };
-  dossiers.forEach(d => { if(tel[d.status]!=null) tel[d.status]++; });
+  actief.forEach(d => { if(tel[d.status]!=null) tel[d.status]++; });
   document.getElementById('stat-concept').textContent = tel.concept;
   document.getElementById('stat-aangeboden').textContent = tel.aangeboden;
   document.getElementById('stat-ondertekend').textContent = tel.ondertekend;
-  const zoek = document.getElementById('dossier-zoek'); if(zoek) zoek.value='';
-  tekenDossierKaarten(dossiers);
+  filterDossiers();
 }
 function filterDossiers(){
   const q = (document.getElementById('dossier-zoek').value||'').toLowerCase().trim();
-  if(!q){ tekenDossierKaarten(ALLE_DOSSIERS); return; }
-  const f = ALLE_DOSSIERS.filter(d =>
+  const tog = document.getElementById('toon-archief');
+  const toonArch = tog && tog.checked;
+  let lijst = toonArch ? ALLE_DOSSIERS : ALLE_DOSSIERS.filter(d => !d.gearchiveerd);
+  if(q) lijst = lijst.filter(d =>
     ((d.object_adres||'')+' '+(d.object_plaats||'')+' '+(d.opdrachtgever||'')).toLowerCase().includes(q));
-  tekenDossierKaarten(f);
+  tekenDossierKaarten(lijst);
 }
 function tekenDossierKaarten(dossiers){
   const lijst = document.getElementById('dossier-lijst');
@@ -1199,7 +1214,7 @@ function tekenDossierKaarten(dossiers){
     return;
   }
   if(!dossiers.length){
-    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Geen opdrachten gevonden voor deze zoekopdracht.</div>';
+    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Geen opdrachten gevonden.</div>';
     return;
   }
   lijst.innerHTML = dossiers.map(d => {
@@ -1207,15 +1222,33 @@ function tekenDossierKaarten(dossiers){
     const adres = [d.object_adres, d.object_plaats].filter(Boolean).join(', ') || 'Onbekend object';
     const datum = d.datum_opdracht ? d.datum_opdracht.split('-').reverse().join('-') : '';
     const sub = [d.opdrachtgever || 'Nog geen opdrachtgever', d.documenttype, datum].filter(Boolean).join(' · ');
-    const aanbiedKnop = (d.status==='concept')
+    const aanbiedKnop = (d.status==='concept' && !d.gearchiveerd)
       ? `<button class="kaart-knop" onclick="event.stopPropagation();vraagAanbieden(()=>biedAan('${d.id}'))">Aanbieden aan klant ›</button>`
       : '';
-    return `<div class="otd-card ${s.cls}" onclick="openBouwer('${d.id}')">
+    const archKnop = `<button class="kaart-knop ghost" onclick="event.stopPropagation();zetArchief('${d.id}',${!d.gearchiveerd})">${d.gearchiveerd?'Terugzetten':'Archiveren'}</button>`;
+    const archChip = d.gearchiveerd ? '<span class="chip arch">Gearchiveerd</span>' : '';
+    return `<div class="otd-card ${s.cls}${d.gearchiveerd?' gearchiveerd':''}" onclick="openBouwer('${d.id}')">
       <div><div class="adres">${adres}</div><div class="sub">${sub}</div></div>
-      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span>${aanbiedKnop}</div>
+      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span>${archChip}${aanbiedKnop}${archKnop}</div>
     </div>`;
   }).join('');
 }
+async function zetArchief(id, archief){
+  try{
+    const token = await geldigeToken(); if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-archiveren',{
+      method:'POST',
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ dossier_id:id, gearchiveerd:archief })
+    });
+    if(res.status===401){ sessieVerlopen(); return; }
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error || ('HTTP '+res.status));
+    const d = ALLE_DOSSIERS.find(x=>x.id===id); if(d) d.gearchiveerd = archief;
+    verversStatsEnLijst();
+  }catch(e){ alert('Archiveren mislukt: '+(e.message||e)); }
+}
+
 
 async function biedAan(dossierId){
   try{
