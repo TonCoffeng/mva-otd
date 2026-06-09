@@ -326,6 +326,11 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <div class="ckeuze" data-taal="nl_en" onclick="kiesTaal('nl_en')">Nederlands + Engels</div>
           </div>
         </div>
+        <div class="fg" id="fg_specifiek_pand" style="display:none">
+          <label>Gericht op één bekend pand?</label>
+          <div class="toggle" id="tg_specifiek" onclick="togSpecifiek()"><span class="dot">✓</span>Specifiek pand bekend — objectgegevens invullen</div>
+        </div>
+        <div id="object-velden">
         <div class="fg"><label>Object uit Realworks</label>
           <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
           <div id="i_pand_res" class="zoek-res"></div>
@@ -378,6 +383,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             </select>
           </div>
         </div>
+        </div><!-- /object-velden -->
         <div id="aankoop-zoek" style="display:none">
           <div class="sec-p">Zoekprofiel van de koper — vul in wat bekend is.</div>
           <div class="fg-row">
@@ -490,6 +496,9 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="toggle aan" data-t="sleutel" onclick="tog('sleutel')"><span class="dot">✓</span>Sleutel in bruikleen</div>
           <div class="toggle aan" data-t="label" onclick="tog('label')"><span class="dot">✓</span>Energielabel</div>
           <div class="toggle aan" data-t="mark" onclick="tog('mark')"><span class="dot">✓</span>Marketing toegestaan</div>
+        </div>
+        <div id="aankoop-afspraken-note" style="display:none">
+          <p class="sec-p">Bij aankoop gelden geen verkoop-afspraken. Het beëindigingsbeding staat standaard gunstig ingesteld: geen kosten behoudens daadwerkelijk gemaakte kosten.</p>
         </div>
       </div>
 
@@ -642,12 +651,38 @@ function tog(k){state.t[k]=state.t[k]?0:1;
 function kiesTaal(t){state.taal=t;
   document.querySelectorAll('#taal-keuze .ckeuze').forEach(e=>e.classList.toggle('aan',e.dataset.taal===t)); render();}
 function laatsteStap(){ return (state.documenttype==='aankoop') ? 2 : 3; }
+function togSpecifiek(){
+  const ov=document.getElementById('object-velden');
+  const tg=document.getElementById('tg_specifiek');
+  if(!ov) return;
+  const aan = (ov.style.display==='none');
+  ov.style.display = aan ? 'block' : 'none';
+  if(tg) tg.classList.toggle('aan', aan);
+  if(!aan){ const o=document.getElementById('i_obj'); if(o) o.value=''; }
+  render();
+}
+function zetPrijsmodelOpties(aankoop){
+  const sel=document.getElementById('i_model'); if(!sel) return;
+  const opts = aankoop
+    ? [['percentage','Percentage'],['vast','Vast bedrag']]
+    : [['percentage','Percentage'],['vast','Vast bedrag'],['vast_pct','Vast bedrag + percentage'],['pct_pct_meerprijs','Percentage + percentage boven de basis'],['pct_vast_meerprijs','Percentage + vast bedrag boven de basis']];
+  const huidig = sel.value;
+  sel.innerHTML = opts.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('');
+  sel.value = opts.some(o=>o[0]===huidig) ? huidig : 'percentage';
+  kiesModel(sel.value);
+}
 function kiesDoctype(dt){
   state.documenttype = dt;
   document.querySelectorAll('#doctype-keuze .ckeuze').forEach(e=>e.classList.toggle('aan', e.dataset.doctype===dt));
   const aankoop = (dt==='aankoop');
   const zk=document.getElementById('aankoop-zoek'); if(zk) zk.style.display = aankoop?'block':'none';
   const bord=document.querySelector('.toggle[data-t="bord"]'); if(bord) bord.style.display = aankoop?'none':'';
+  ['sleutel','label','mark'].forEach(k=>{ const el=document.querySelector('.toggle[data-t="'+k+'"]'); if(el) el.style.display = aankoop?'none':''; });
+  const ov=document.getElementById('object-velden'); if(ov) ov.style.display = aankoop?'none':'';
+  const fsp=document.getElementById('fg_specifiek_pand'); if(fsp) fsp.style.display = aankoop?'':'none';
+  const tsp=document.getElementById('tg_specifiek'); if(tsp) tsp.classList.remove('aan');
+  const ann=document.getElementById('aankoop-afspraken-note'); if(ann) ann.style.display = aankoop?'block':'none';
+  zetPrijsmodelOpties(aankoop);
   const step3=document.querySelector('.step[data-step="3"]'); if(step3) step3.style.display = aankoop?'none':'';
   const lbl=document.getElementById('lbl_vp'); if(lbl) lbl.textContent = aankoop ? 'Verwachte koopsom (\u20ac)' : 'Vraagprijs (\u20ac)';
   if(state.stap > laatsteStap()) ganaarStap(laatsteStap());
@@ -854,8 +889,7 @@ function render(){
     <h4>Kosten en courtage</h4>
     <div class="pv-court">${court}</div>
     <div class="kv"><span class="k">Opstartkosten</span><span>betaalwijze: ${v('i_term')}</span></div>
-    <h4>Afspraken</h4>
-    ${vinkjes}
+    ${_isAankoop ? '' : '<h4>Afspraken</h4>'+vinkjes}
     ${promotieBlok}`;
   document.getElementById('prod-totaal').textContent=euro(prodTotaal());
 }
