@@ -10,3 +10,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Geplande koppeling: betaalde courtagenota's -> bijbehorende OTD archiveren (elke 15 min)
+[functions."otd-archief-sync"]
+  schedule = "*/15 * * * *"
