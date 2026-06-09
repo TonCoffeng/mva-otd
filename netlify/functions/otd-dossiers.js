@@ -69,7 +69,7 @@ exports.handler = async (event) => {
         return json(200, { rol, naam, makelaarId, dossier: d, opdrachtgevers, producten });
       }
 
-      let path = '/rest/v1/otd_dossiers?select=id,documenttype,object_adres,object_plaats,vraagprijs,courtage_type,courtage_pct_incl,courtage_vast_bedrag,datum_opdracht,status,makelaar_id&order=aangemaakt_op.desc';
+      let path = '/rest/v1/otd_dossiers?select=id,documenttype,object_adres,object_plaats,vraagprijs,courtage_type,courtage_model,courtage_pct_incl,courtage_vast_bedrag,courtage_meerprijs_waarde,courtage_meerprijs_type,courtage_meerprijs_drempel,datum_opdracht,status,makelaar_id,gearchiveerd&order=aangemaakt_op.desc';
       if (!isDirectie) {
         if (!makelaarId) return json(200, { rol, naam, dossiers: [] });
         path += '&makelaar_id=eq.' + makelaarId;
