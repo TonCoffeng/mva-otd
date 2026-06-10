@@ -1333,7 +1333,7 @@ async function laadPanden(){
     const j = await res.json();
     if(!res.ok) throw new Error(j.error || 'fout');
     window._PANDEN = (j.panden || []).map(p => ({
-      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||''
+      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||'', status: p.status||''
     }));
   } catch(e){ window._PANDEN = []; }
 }
@@ -1349,7 +1349,8 @@ function zoekPand(){
   window._PANDRES = {};
   box.innerHTML = lijst.map((p,i) => {
     window._PANDRES[i] = p;
-    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats].filter(Boolean).join(' · ')+'</span></div>';
+    const st = p.status ? _cap(p.status.replace(/_/g,' ')) : '';
+    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats,st].filter(Boolean).join(' · ')+'</span></div>';
   }).join('');
 }
 function kiesPandUit(i){
