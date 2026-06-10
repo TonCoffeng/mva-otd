@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wat nu? — Na het tekenen van je aankoopopdracht · Makelaars van Amsterdam</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1A2B5F;
+    --oranje:#E8500A;
+    --papier:#F9F6EF;
+    --inkt:#23211C;
+    --grijs:#6B6760;
+    --lijn:#E5E0D6;
+    --wit:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Hanken Grotesk',sans-serif;
+    background:var(--papier);
+    color:var(--inkt);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+
+  /* Header */
+  header{padding:56px 0 40px;animation:fadeUp .6s ease both}
+  .eyebrow{
+    font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--oranje);margin-bottom:14px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(2rem,5vw,3.1rem);line-height:1.12;
+    color:var(--navy);max-width:760px;
+  }
+  .intro{
+    margin-top:20px;max-width:680px;font-size:1.08rem;color:var(--grijs);
+  }
+  .intro strong{color:var(--inkt)}
+
+  /* Stappen */
+  .stappen{padding:8px 0 24px}
+  .stap{
+    background:var(--wit);border:1px solid var(--lijn);border-radius:14px;
+    padding:30px 32px;margin-bottom:18px;
+    display:grid;grid-template-columns:64px 1fr;gap:22px;align-items:start;
+    animation:fadeUp .6s ease both;
+  }
+  .stap:nth-child(1){animation-delay:.05s}
+  .stap:nth-child(2){animation-delay:.10s}
+  .stap:nth-child(3){animation-delay:.15s}
+  .stap:nth-child(4){animation-delay:.20s}
+  .stap:nth-child(5){animation-delay:.25s}
+  .stap:nth-child(6){animation-delay:.30s}
+  .stap:nth-child(7){animation-delay:.35s}
+  .stap:nth-child(8){animation-delay:.40s}
+  .stap-nr{
+    font-family:'Fraunces',serif;font-size:2rem;font-weight:700;
+    color:var(--navy);background:var(--papier);
+    width:64px;height:64px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--lijn);
+  }
+  .stap h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem;
+    color:var(--navy);margin-bottom:8px;
+  }
+  .stap p{color:var(--inkt);margin-bottom:8px}
+  .stap p:last-child{margin-bottom:0}
+  .stap .sub{color:var(--grijs);font-size:.95rem}
+  .stap ul{margin:8px 0 0 18px;color:var(--inkt)}
+  .stap li{margin-bottom:5px}
+
+  /* WWFT-accentblok */
+  .stap.accent{
+    border-left:5px solid var(--oranje);
+  }
+  .badge{
+    display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--oranje);
+    background:#FCEBE0;border-radius:99px;padding:4px 12px;margin-bottom:10px;
+  }
+
+  /* Afsluiter */
+  .afsluiter{
+    background:var(--navy);color:var(--wit);border-radius:14px;
+    padding:38px 36px;margin:26px 0 64px;
+    animation:fadeUp .6s ease both;animation-delay:.45s;
+  }
+  .afsluiter h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem;margin-bottom:10px;
+  }
+  .afsluiter p{color:#D8DCEA;max-width:640px}
+  .afsluiter p strong{color:var(--wit)}
+
+  footer{
+    border-top:1px solid var(--lijn);padding:28px 0 48px;
+    font-size:.85rem;color:var(--grijs);
+  }
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+  @media(max-width:680px){
+    .stap{grid-template-columns:1fr;padding:24px 22px}
+    .stap-nr{width:48px;height:48px;font-size:1.4rem}
+    .afsluiter{padding:30px 24px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Makelaars van Amsterdam</div>
+    <h1>Je aankoopopdracht is getekend.<br>Zo gaan we jouw woning vinden.</h1>
+    <p class="intro">De handtekeningen staan eronder — vanaf nu staan wij aan jouw kant van de tafel. Hieronder lees je <strong>stap voor stap</strong> hoe het aankooptraject verloopt, wat wij voor je doen en waar we jou bij nodig hebben.</p>
+  </header>
+
+  <section class="stappen">
+
+    <div class="stap accent">
+      <div class="stap-nr">1</div>
+      <div>
+        <div class="badge">Wettelijk verplicht</div>
+        <h2>Identificatie (WWFT-controle)</h2>
+        <p>Als makelaar zijn wij wettelijk verplicht om de identiteit van onze opdrachtgevers vast te stellen — dat heet de WWFT-controle (Wet ter voorkoming van witwassen en financieren van terrorisme). Dit is een standaardstap bij elke opdracht en zegt niets over jou persoonlijk.</p>
+        <p class="sub">Wat we van je nodig hebben: een <strong>geldig legitimatiebewijs</strong> (paspoort, identiteitskaart of rijbewijs). Je makelaar neemt hiervoor op korte termijn contact met je op. Je gegevens worden vertrouwelijk behandeld en alleen gebruikt waarvoor de wet het vereist.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">2</div>
+      <div>
+        <h2>Financiering op orde</h2>
+        <p>Voordat we serieus kunnen bieden, moet helder zijn wat je kunt en wilt besteden. Heb je nog geen hypotheekadviseur gesproken, doe dat dan nu — het bepaalt je biedruimte én je slagkracht. Verkopers (en hun makelaars) nemen een bod met onderbouwde financiering serieuzer.</p>
+        <p class="sub">Eigen geld, overbrugging, schenkingen: neem het hele plaatje mee. Je makelaar denkt graag mee over wat realistisch is in de huidige Amsterdamse markt.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">3</div>
+      <div>
+        <h2>Je zoekprofiel scherp stellen</h2>
+        <p>Samen met je makelaar leg je vast waar we op jagen: buurten, woningtype, oppervlakte, buitenruimte, budget — en net zo belangrijk: waar je <em>niet</em> op wilt inleveren. Hoe scherper het profiel, hoe gerichter we kunnen toeslaan als het juiste object voorbijkomt.</p>
+        <p class="sub">Heb je al een specifieke woning op het oog (gerichte aankoop)? Dan slaan we deze stap grotendeels over en gaan we direct naar de beoordeling en biedstrategie.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">4</div>
+      <div>
+        <h2>Zoeken — ook buiten Funda om</h2>
+        <p>Wij zoeken actief voor je: nieuw aanbod op Funda, maar óók woningen die nog niet online staan — via ons netwerk van collega-makelaars en het stille aanbod. Komt er iets kansrijks voorbij, dan hoor je het direct en schakelen we snel. In deze markt wint vaak degene die het eerst en het best voorbereid aan tafel zit.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">5</div>
+      <div>
+        <h2>Bezichtigen met een professionele blik</h2>
+        <p>Je makelaar gaat mee (of vooruit) en kijkt verder dan de styling: bouwkundige staat, fundering, de gezondheid van de VvE, erfpacht en de juridische bijzonderheden die in Amsterdam zomaar duizenden euro's kunnen schelen.</p>
+        <ul>
+          <li>Erfpacht: afgekocht, voortdurend of eeuwigdurend — en wat betekent dat voor de prijs?</li>
+          <li>VvE: reserves, meerjarenonderhoudsplan, notulen</li>
+          <li>Fundering en casco, zeker bij vooroorlogse bouw</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">6</div>
+      <div>
+        <h2>Waardebepaling en biedstrategie</h2>
+        <p>Voor we bieden, onderbouwen we de waarde: recente verkopen in de buurt, de staat van de woning, erfpacht- en VvE-situatie. Op basis daarvan bepalen we samen de strategie — openingsbod, voorbehouden, oplevering en slimme voorwaarden die je bod aantrekkelijk maken zonder onnodig risico. Het advies is van ons — <strong>de beslissing is altijd aan jou</strong>.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">7</div>
+      <div>
+        <h2>Bod geaccepteerd — nu zorgvuldig afronden</h2>
+        <p>Gefeliciteerd, maar we zijn er nog niet. Nu volgt de koopovereenkomst, met daarin jouw zekerheden:</p>
+        <ul>
+          <li>Drie dagen wettelijke bedenktijd na ondertekening</li>
+          <li>Ontbindende voorwaarden, zoals financiering en eventueel een bouwkundige keuring</li>
+          <li>De bouwkundige keuring en taxatie (voor je hypotheek) plannen we direct in</li>
+        </ul>
+        <p class="sub">Je makelaar controleert de koopakte regel voor regel voordat jij tekent.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">8</div>
+      <div>
+        <h2>Eindinspectie en de sleutel</h2>
+        <p>Op de dag van overdracht lopen we eerst samen door de woning voor de eindinspectie: is alles zoals afgesproken achtergelaten, staan de meterstanden genoteerd? Daarna naar de notaris — handtekening, sleuteloverdracht, en de woning is van jou.</p>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="afsluiter">
+    <h2>Vragen tussendoor?</h2>
+    <p>Je aankoopmakelaar is je vaste aanspreekpunt gedurende het hele traject — bel of mail gerust, ook met kleine vragen. <strong>Liever even teruglezen wat we hebben afgesproken?</strong> De getekende opdracht tot dienstverlening heb je per e-mail ontvangen.</p>
+  </div>
+
+  <footer>
+    Makelaars van Amsterdam · Valkenburgerstraat 67, 1011 MG Amsterdam · makelaarsvan.nl
+  </footer>
+
+</div>
+
+</body>
+</html>
