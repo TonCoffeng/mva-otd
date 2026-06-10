@@ -443,7 +443,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           </select>
         </div>
         <div class="fg-row">
-          <div class="fg" id="fg_pct"><label>Percentage over de koopsom (incl. BTW)</label><input id="i_pct" oninput="naRekenen()"></div>
+          <div class="fg" id="fg_pct"><label>Percentage (incl. BTW)</label><input id="i_pct" oninput="naRekenen()"></div>
           <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag (€)</label><input id="i_vast" oninput="naRekenen()"></div>
         </div>
         <div id="fg_meerprijs" style="display:none">
@@ -470,7 +470,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
         <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
         <div class="fg"><label>Beëindigingskosten</label>
-          <div class="toggle aan" id="tg_beeind" onclick="togBeeind()"><span class="dot">✓</span>Alleen daadwerkelijk gemaakte kosten (conform VBO-voorwaarden)</div>
+          <div class="toggle aan" id="tg_beeind" onclick="togBeeind()"><span class="dot">✓</span>Alleen daadwerkelijk gemaakte kosten (conform de voorwaarden van Vastgoed Nederland)</div>
           <p class="sec-p">Bij voortijdige beëindiging worden geen beëindigingskosten in rekening gebracht, behoudens de daadwerkelijk gemaakte kosten (taxaties, bouwkundige keuring e.d.). Aan = deze gunstige clausule in de overeenkomst; uit = standaard regime.</p>
         </div>
         <div class="fg"><label>Opmerkingen / afwijkende afspraken</label>
