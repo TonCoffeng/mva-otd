@@ -536,7 +536,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 <script>
 // ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
 const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
-const state={stap:0, court:'pct', taal:'nl', hyp:true, hypDoor:false, opstart:true, beeind:true, t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
+const state={stap:0, court:'pct', taal:'nl', hyp:true, hypDoor:false, hypVerzonden:false, opstart:true, beeind:true, t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
 
 function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
@@ -676,9 +676,57 @@ function kiesHyp(ja){
   render();
 }
 function togHypDoor(){
-  state.hypDoor = !state.hypDoor;
-  const t=document.getElementById('tg_hyp_door'); if(t) t.classList.toggle('aan', state.hypDoor);
+  if(!state.hypDoor){
+    hypOpen();           // aanzetten → popup om door te sturen
+  } else {
+    state.hypDoor=false; state.hypVerzonden=false;
+    const t=document.getElementById('tg_hyp_door'); if(t) t.classList.remove('aan');
+    render();
+  }
+}
+function hypOpen(){
+  const m=document.getElementById('hyp-modal'); if(m) m.style.display='flex';
+}
+function hypAnnuleer(){
+  const m=document.getElementById('hyp-modal'); if(m) m.style.display='none';
+  if(!state.hypVerzonden){
+    state.hypDoor=false;
+    const t=document.getElementById('tg_hyp_door'); if(t) t.classList.remove('aan');
+  }
   render();
+}
+async function hypVerstuur(){
+  const naam=[v('i_vn'),v('i_an')].filter(Boolean).join(' ').trim();
+  const email=v('i_em').trim(), tel=v('i_tel').trim();
+  if(!naam && !email && !tel){ alert('Vul eerst minimaal naam, e-mail of telefoon van de opdrachtgever in.'); return; }
+  const g = (typeof HUIDIGE_GEBRUIKER!=='undefined' && HUIDIGE_GEBRUIKER) ? HUIDIGE_GEBRUIKER : {};
+  const payload = { action:'verwijs_hypotheek', data:{
+    klant_naam: naam||null, klant_email: email||null, klant_telefoon: tel||null,
+    voorkeur_adviseur: v('hyp_adviseur')||null,
+    type_advies: v('hyp_advies')||null,
+    opmerking: v('hyp_opm')||null,
+    gevende_makelaar_naam: g.naam||null,
+    gevende_makelaar_email: g.email||null,
+    adres: v('i_obj')||null
+  }};
+  const btn=document.getElementById('hyp_verstuur_btn');
+  if(btn){ btn.disabled=true; btn.textContent='Versturen…'; }
+  try{
+    const res=await fetch('https://leadpool.makelaarsvan.nl/.netlify/functions/monday',{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok || j.error) throw new Error(j.error || ('HTTP '+res.status));
+    state.hypDoor=true; state.hypVerzonden=true;
+    const t=document.getElementById('tg_hyp_door'); if(t) t.classList.add('aan');
+    const m=document.getElementById('hyp-modal'); if(m) m.style.display='none';
+    alert('Doorverwijzing verstuurd naar de Hypotheekshop'+(j.mail_verzonden?' (mail verzonden).':'.'));
+    render();
+  }catch(e){
+    alert('Versturen mislukt: '+(e&&e.message?e.message:e));
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Versturen'; }
+  }
 }
 function kiesOpstart(ja){
   state.opstart = ja;
@@ -1529,5 +1577,31 @@ const AUTH = {
 
 AUTH.init();
 </script>
+<div id="hyp-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;max-width:540px;width:100%;border-radius:16px;padding:24px;max-height:90vh;overflow:auto;box-sizing:border-box">
+    <h3 style="margin:0 0 4px;color:#13235b;font-size:20px">Doorverwijzing naar de Hypotheekshop</h3>
+    <p class="sec-p" style="margin:0 0 16px">Wordt direct verstuurd naar de Hypotheekshop; zij nemen contact op met de klant. De klantgegevens komen uit de opdrachtgever van deze OTD.</p>
+    <div class="fg"><label>Voorkeur adviseur</label>
+      <select id="hyp_adviseur"><option>Edwin</option><option>Canner</option><option selected>Geen voorkeur</option></select>
+    </div>
+    <div class="fg"><label>Welk advies heeft de klant nodig?</label>
+      <select id="hyp_advies">
+        <option value="">— Kies —</option>
+        <option>Maximaal berekening loondienst - korte telefonische afspraak om het koopbudget te bepalen</option>
+        <option>Maximaal berekening complex - telefonische afspraak om het koopbudget te bepalen, met name voor ondernemers, bij scheiding en overige complexiteiten</option>
+        <option>Afspraak fysiek met een adviseur Valkenburgerstraat 67</option>
+        <option>Afspraak fysiek met de adviseur andere locatie</option>
+        <option>Afspraak virtueel met een adviseur</option>
+      </select>
+    </div>
+    <div class="fg"><label>Opmerking voor de adviseur</label>
+      <textarea id="hyp_opm" rows="3" placeholder="Korte achtergrond van de klant, of locatie bij een fysieke afspraak op een andere plek…" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #d9dee8;border-radius:12px;font:inherit;color:inherit;resize:vertical"></textarea>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button type="button" id="hyp_verstuur_btn" onclick="hypVerstuur()" style="flex:1;background:#1f9d55;color:#fff;border:0;border-radius:12px;padding:14px;font-weight:700;font-size:16px;cursor:pointer">Versturen</button>
+      <button type="button" onclick="hypAnnuleer()" style="background:#fff;color:#13235b;border:1.5px solid #d9dee8;border-radius:12px;padding:14px 20px;font-weight:600;cursor:pointer">Annuleren</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
