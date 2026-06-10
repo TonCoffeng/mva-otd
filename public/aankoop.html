@@ -315,8 +315,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
     <div class="invoer">
       <!-- stap 0 -->
       <div class="veld-sec actief" data-sec="0">
-        <div class="sec-h">Object &amp; opdrachtgever</div>
-        <div class="sec-p">Haal op uit Realworks of vul handmatig in.</div>
+        <div class="sec-h">Opdrachtgever &amp; zoekprofiel</div>
+        <div class="sec-p">Begin met de opdrachtgever; vul daarna in wat over de zoekopdracht bekend is.</div>
         <div class="fg" id="fg_makelaar" style="display:none"><label>Opdracht namens makelaar</label>
           <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
         </div>
@@ -326,80 +326,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <div class="ckeuze" data-taal="nl_en" onclick="kiesTaal('nl_en')">Nederlands + Engels</div>
           </div>
         </div>
-        <div class="fg" id="fg_specifiek_pand" style="display:none">
-          <label>Gericht op één bekend pand?</label>
-          <div class="toggle" id="tg_specifiek" onclick="togSpecifiek()"><span class="dot">✓</span>Specifiek pand bekend — objectgegevens invullen</div>
-        </div>
-        <div id="object-velden">
-        <div class="fg"><label>Object uit Realworks</label>
-          <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
-          <div id="i_pand_res" class="zoek-res"></div>
-        </div>
-        <div class="fg"><label>Objectadres</label><input id="i_obj" oninput="render()"></div>
-        <input type="hidden" id="i_rwid" value="">
-        <input type="hidden" id="i_plaats" value="">
-        <input type="hidden" id="i_pc" value="">
-        <div class="fg-row">
-          <div class="fg"><label>Bouwvorm</label>
-            <select id="i_bouwvorm" onchange="render()">
-              <option value="">— Kies —</option>
-              <option>Bestaande bouw</option>
-              <option>Nieuwbouw</option>
-              <option>NVT</option>
-            </select>
-          </div>
-          <div class="fg"><label>Soort object</label>
-            <select id="i_soort" onchange="soortGewijzigd()">
-              <option value="">— Kies —</option>
-              <option>Woonhuis</option>
-              <option>Appartement</option>
-              <option>Woning met bedrijfsruimte</option>
-              <option>Parkeerplaats / garagebox</option>
-              <option>Bedrijfspand / kantoor</option>
-              <option>Bouwgrond</option>
-              <option value="__anders">Anders, namelijk…</option>
-            </select>
-          </div>
-        </div>
-        <div class="fg" id="fg_soort_anders" style="display:none"><label>Soort object — namelijk</label><input id="i_soort_anders" placeholder="Typ het soort object…" oninput="render()"></div>
-        <div class="fg-row">
-          <div class="fg"><label>Bestemming</label>
-            <select id="i_best" onchange="render()">
-              <option value="">— Kies —</option>
-              <option>Wonen</option>
-              <option>Bedrijfsmatig</option>
-              <option>Gemengd (wonen + bedrijf)</option>
-              <option>Anders</option>
-            </select>
-          </div>
-          <div class="fg"><label>In gebruik als</label>
-            <select id="i_gebr" onchange="render()">
-              <option value="">— Kies —</option>
-              <option>Eigen bewoning</option>
-              <option>Verhuurd</option>
-              <option>Bedrijfsmatig</option>
-              <option>Leegstaand</option>
-              <option>Anders</option>
-            </select>
-          </div>
-        </div>
-        </div><!-- /object-velden -->
-        <div id="aankoop-zoek" style="display:none">
-          <div class="sec-p">Zoekprofiel van de koper — vul in wat bekend is.</div>
-          <div class="fg-row">
-            <div class="fg"><label>Max. budget (€)</label><input id="z_maxprijs" oninput="render()"></div>
-            <div class="fg"><label>Type woning</label><input id="z_type" placeholder="bijv. appartement" oninput="render()"></div>
-          </div>
-          <div class="fg"><label>Zoekgebied / locatie</label><input id="z_locatie" placeholder="bijv. Amsterdam Oud-West" oninput="render()"></div>
-          <div class="fg-row">
-            <div class="fg"><label>Gewenste oppervlakte</label><input id="z_oppervlakte" placeholder="bijv. vanaf 70 m\u00b2" oninput="render()"></div>
-            <div class="fg"><label>Aantal kamers</label><input id="z_kamers" placeholder="bijv. 3+" oninput="render()"></div>
-          </div>
-          <div class="fg-row">
-            <div class="fg"><label>Buitenruimte</label><input id="z_buiten" placeholder="bijv. balkon / tuin" oninput="render()"></div>
-            <div class="fg"><label>Overige wensen</label><input id="z_overig" oninput="render()"></div>
-          </div>
-        </div>
+
+        <div class="sec-h" style="margin-top:18px">Opdrachtgever</div>
         <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
           <input id="i_zoek" placeholder="Typ naam of e-mail…" autocomplete="off" oninput="zoekRelatie()">
           <div id="i_zoek_res" class="zoek-res"></div>
@@ -449,6 +377,56 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             </select>
           </div>
         </div>
+
+        <div class="sec-h" style="margin-top:18px">Zoekprofiel</div>
+        <div class="sec-p">Wat zoekt de koper? Vul in wat bekend is.</div>
+        <div class="fg"><label>Soort object (meerdere mogelijk)</label>
+          <div class="toggle-grid" id="soort-grid">
+            <div class="toggle" data-soort="Woonhuis" onclick="togSoort(this)"><span class="dot">✓</span>Woonhuis</div>
+            <div class="toggle" data-soort="Appartement" onclick="togSoort(this)"><span class="dot">✓</span>Appartement</div>
+            <div class="toggle" data-soort="Parkeergelegenheid" onclick="togSoort(this)"><span class="dot">✓</span>Parkeergelegenheid</div>
+            <div class="toggle" data-soort="Bouwgrond" onclick="togSoort(this)"><span class="dot">✓</span>Bouwgrond</div>
+            <div class="toggle" data-soort="Opslagruimte" onclick="togSoort(this)"><span class="dot">✓</span>Opslagruimte</div>
+            <div class="toggle" data-soort="Berging" onclick="togSoort(this)"><span class="dot">✓</span>Berging</div>
+            <div class="toggle" data-soort="Ligplaats" onclick="togSoort(this)"><span class="dot">✓</span>Ligplaats</div>
+          </div>
+        </div>
+        <div class="fg-row">
+          <div class="fg"><label>Budget van (€)</label><input id="z_minprijs" oninput="render()"></div>
+          <div class="fg"><label>Budget tot (€)</label><input id="z_maxprijs" oninput="render()"></div>
+        </div>
+        <div class="fg"><label>Zoekgebied / locatie</label><input id="z_locatie" placeholder="bijv. Amsterdam Oud-West" oninput="render()"></div>
+        <div class="fg-row">
+          <div class="fg"><label>Gewenste oppervlakte</label><input id="z_oppervlakte" placeholder="bijv. vanaf 70 m\u00b2" oninput="render()"></div>
+          <div class="fg"><label>Aantal kamers</label><input id="z_kamers" placeholder="bijv. 3+" oninput="render()"></div>
+        </div>
+        <div class="fg-row">
+          <div class="fg"><label>Buitenruimte</label><input id="z_buiten" placeholder="bijv. balkon / tuin" oninput="render()"></div>
+          <div class="fg"><label>Overige wensen</label><input id="z_overig" oninput="render()"></div>
+        </div>
+
+        <div class="sec-h" style="margin-top:18px">Hypotheek</div>
+        <div class="fg"><label>Hypotheekmogelijkheden gecheckt door bank/adviseur?</label>
+          <div class="courtage-keuze">
+            <div class="ckeuze aan" id="hyp_ja" onclick="kiesHyp(true)">Ja</div>
+            <div class="ckeuze" id="hyp_nee" onclick="kiesHyp(false)">Nee</div>
+          </div>
+        </div>
+        <div id="fg_hyp_door" style="display:none">
+          <div class="toggle" id="tg_hyp_door" onclick="togHypDoor()"><span class="dot">✓</span>Klant doorsturen naar de Hypotheekshop</div>
+          <p class="sec-p">De klant geeft via ondertekening toestemming dat zijn gegevens met de Hypotheekshop worden gedeeld. De doorverwijzing wordt na ondertekening verstuurd (mailkoppeling volgt in een aparte stap).</p>
+        </div>
+
+        <div class="fg" id="fg_specifiek_pand" style="display:none">
+          <label>Gericht op één bekend pand?</label>
+          <div class="toggle" id="tg_specifiek" onclick="togSpecifiek()"><span class="dot">✓</span>Specifiek pand bekend — adres invullen</div>
+        </div>
+        <div id="object-velden">
+          <div class="fg"><label>Objectadres</label><input id="i_obj" oninput="render()"></div>
+          <input type="hidden" id="i_rwid" value="">
+          <input type="hidden" id="i_plaats" value="">
+          <input type="hidden" id="i_pc" value="">
+        </div>
       </div>
 
       <!-- stap 1 -->
@@ -482,7 +460,13 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         </div>
         <div class="fg" id="fg_vp"><label id="lbl_vp">Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
         <div id="reken-box" class="reken-box" style="display:none"></div>
-        <div class="fg"><label>Betaaltermijn opstartkosten</label>
+        <div class="fg"><label>Opstartkosten van toepassing?</label>
+          <div class="courtage-keuze">
+            <div class="ckeuze aan" id="opstart_ja" onclick="kiesOpstart(true)">Ja</div>
+            <div class="ckeuze" id="opstart_nee" onclick="kiesOpstart(false)">Nee</div>
+          </div>
+        </div>
+        <div class="fg" id="fg_term"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
         <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
       </div>
@@ -545,7 +529,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 <script>
 // ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
 const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
-const state={stap:0, court:'pct', taal:'nl', t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
+const state={stap:0, court:'pct', taal:'nl', hyp:true, hypDoor:false, opstart:true, t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
 
 function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
@@ -661,6 +645,39 @@ function togSpecifiek(){
   if(!aan){ const o=document.getElementById('i_obj'); if(o) o.value=''; }
   render();
 }
+function togSoort(el){ if(el) el.classList.toggle('aan'); render(); }
+function soortGekozen(){
+  return [...document.querySelectorAll('#soort-grid .toggle.aan')].map(e=>e.dataset.soort).join(', ');
+}
+function budgetTekst(){
+  const van=v('z_minprijs'), tot=v('z_maxprijs');
+  if(van && tot) return '€ '+van+' – € '+tot;
+  if(tot) return 'tot € '+tot;
+  if(van) return 'vanaf € '+van;
+  return '—';
+}
+function kiesHyp(ja){
+  state.hyp = ja;
+  const j=document.getElementById('hyp_ja'), n=document.getElementById('hyp_nee');
+  if(j) j.classList.toggle('aan', ja);
+  if(n) n.classList.toggle('aan', !ja);
+  const d=document.getElementById('fg_hyp_door'); if(d) d.style.display = ja ? 'none' : 'block';
+  if(ja){ state.hypDoor=false; const t=document.getElementById('tg_hyp_door'); if(t) t.classList.remove('aan'); }
+  render();
+}
+function togHypDoor(){
+  state.hypDoor = !state.hypDoor;
+  const t=document.getElementById('tg_hyp_door'); if(t) t.classList.toggle('aan', state.hypDoor);
+  render();
+}
+function kiesOpstart(ja){
+  state.opstart = ja;
+  const j=document.getElementById('opstart_ja'), n=document.getElementById('opstart_nee');
+  if(j) j.classList.toggle('aan', ja);
+  if(n) n.classList.toggle('aan', !ja);
+  const t=document.getElementById('fg_term'); if(t) t.style.display = ja ? 'block' : 'none';
+  render();
+}
 function zetPrijsmodelOpties(aankoop){
   const sel=document.getElementById('i_model'); if(!sel) return;
   const opts = aankoop
@@ -680,6 +697,7 @@ function kiesDoctype(dt){
   ['sleutel','label','mark'].forEach(k=>{ const el=document.querySelector('.toggle[data-t="'+k+'"]'); if(el) el.style.display = aankoop?'none':''; });
   const ov=document.getElementById('object-velden'); if(ov) ov.style.display = aankoop?'none':'';
   const fsp=document.getElementById('fg_specifiek_pand'); if(fsp) fsp.style.display = aankoop?'':'none';
+  const fvp=document.getElementById('fg_vp'); if(fvp) fvp.style.display = aankoop?'none':'';
   const tsp=document.getElementById('tg_specifiek'); if(tsp) tsp.classList.remove('aan');
   const ann=document.getElementById('aankoop-afspraken-note'); if(ann) ann.style.display = aankoop?'block':'none';
   zetPrijsmodelOpties(aankoop);
@@ -779,7 +797,7 @@ function berekenKnop(){
 }
 function naRekenen(){ updateRekenvoorbeeld(); render(); }
 
-function v(id){return document.getElementById(id).value}
+function v(id){const el=document.getElementById(id); return el?el.value:'';}
 function flash(el){if(!el)return; el.classList.add('hl'); setTimeout(()=>el.classList.remove('hl'),400)}
 
 function soortGewijzigd(){
@@ -856,14 +874,14 @@ function render(){
   const _isAankoop = (state.documenttype==='aankoop');
   const objectBlok = _isAankoop ? `
     <h4>Zoekprofiel</h4>
-    <div class="kv"><span class="k">Max. budget</span><span>${v('z_maxprijs')?('€ '+v('z_maxprijs')):'—'}</span></div>
-    <div class="kv"><span class="k">Type woning</span><span>${v('z_type')||'—'}</span></div>
+    <div class="kv"><span class="k">Soort object</span><span>${soortGekozen()||'—'}</span></div>
+    <div class="kv"><span class="k">Budget</span><span>${budgetTekst()}</span></div>
     <div class="kv"><span class="k">Locatie</span><span>${v('z_locatie')||'—'}</span></div>
     <div class="kv"><span class="k">Oppervlakte</span><span>${v('z_oppervlakte')||'—'}</span></div>
     <div class="kv"><span class="k">Kamers</span><span>${v('z_kamers')||'—'}</span></div>
     <div class="kv"><span class="k">Buitenruimte</span><span>${v('z_buiten')||'—'}</span></div>
     <div class="kv"><span class="k">Overige wensen</span><span>${v('z_overig')||'—'}</span></div>
-    <div class="kv"><span class="k">Verwachte koopsom</span><span>${v('i_vp')?('€ '+v('i_vp')+' k.k.'):'—'}</span></div>` : `
+    <div class="kv"><span class="k">Hypotheek gecheckt</span><span>${state.hyp===false?('Nee'+(state.hypDoor?' · doorsturen Hypotheekshop':'')):'Ja'}</span></div>` : `
     <h4>Object</h4>
     <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
     <div class="kv"><span class="k">Soort object</span><span>${soortObjectWaarde()||'—'}</span></div>
@@ -888,7 +906,7 @@ function render(){
     <div class="kv"><span class="k">Aanvaarding</span><span>${v('i_aanv')}</span></div>
     <h4>Kosten en courtage</h4>
     <div class="pv-court">${court}</div>
-    <div class="kv"><span class="k">Opstartkosten</span><span>betaalwijze: ${v('i_term')}</span></div>
+    <div class="kv"><span class="k">Opstartkosten</span><span>${state.opstart===false?'niet van toepassing':('van toepassing · '+(v('i_term')||'—'))}</span></div>
     ${_isAankoop ? '' : '<h4>Afspraken</h4>'+vinkjes}
     ${promotieBlok}`;
   document.getElementById('prod-totaal').textContent=euro(prodTotaal());
@@ -914,7 +932,7 @@ function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 function wisFormulier(){
   ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
    'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel',
-   'z_maxprijs','z_type','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
+   'z_minprijs','z_maxprijs','z_type','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   ['i_bouwvorm','i_soort','i_best','i_gebr','i_herkomst','i_reden'].forEach(id=>{
@@ -922,7 +940,8 @@ function wisFormulier(){
   });
   const aanv=document.getElementById('i_aanv'); if(aanv) aanv.value='in overleg';
   document.getElementById('og-extra').innerHTML=''; ogTeller=1;
-  document.getElementById('fg_soort_anders').style.display='none';
+  const fsa=document.getElementById('fg_soort_anders'); if(fsa) fsa.style.display='none';
+  document.querySelectorAll('#soort-grid .toggle.aan').forEach(e=>e.classList.remove('aan'));
   PROD.gekozen = new Set();
   state.t={bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1};
   document.querySelectorAll('.toggle[data-t]').forEach(e=>{
@@ -930,6 +949,8 @@ function wisFormulier(){
   });
   const _mpt0=document.getElementById('i_mp_type'); if(_mpt0) _mpt0.value='percentage';
   kiesModel('percentage');
+  kiesHyp(true);
+  kiesOpstart(true);
   kiesTaal('nl');
   kiesDoctype('aankoop');
 }
@@ -946,6 +967,14 @@ function _zetSoort(val){
 }
 function _dbDatumNL(s){ if(!s) return ''; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'-'+m[2]+'-'+m[1]):String(s); }
 function _numVeld(n){ if(n==null||n==='') return ''; const x=Number(n); if(isNaN(x)) return String(n); return Number.isInteger(x)?String(x):String(x).replace('.',','); }
+function _zetSoortMulti(val){
+  document.querySelectorAll('#soort-grid .toggle.aan').forEach(e=>e.classList.remove('aan'));
+  if(!val) return;
+  const delen = String(val).split(',').map(s=>s.trim()).filter(Boolean);
+  document.querySelectorAll('#soort-grid .toggle').forEach(e=>{
+    if(delen.includes(e.dataset.soort)) e.classList.add('aan');
+  });
+}
 
 async function laadDossierInBouwer(id){
   const token = await geldigeToken();
@@ -978,13 +1007,18 @@ async function laadDossierInBouwer(id){
   set('i_mp_waarde', _numVeld(d.courtage_meerprijs_waarde));
   set('i_mp_drempel', _numVeld(d.courtage_meerprijs_drempel));
   set('i_vp', _numVeld(d.vraagprijs));
+  set('z_minprijs', d.zoek_min_prijs);
   set('z_maxprijs', d.zoek_max_prijs);
-  set('z_type', d.zoek_type);
+  _zetSoortMulti(d.zoek_type);
   set('z_locatie', d.zoek_locatie);
   set('z_oppervlakte', d.zoek_oppervlakte);
   set('z_kamers', d.zoek_aantal_kamers);
   set('z_buiten', d.zoek_buitenruimte);
   set('z_overig', d.zoek_overig);
+  kiesHyp(d.hypotheek_gecheckt===false ? false : true);
+  if(d.hypotheek_gecheckt===false && d.hypotheekshop_doorsturen===true && !state.hypDoor) togHypDoor();
+  kiesOpstart(d.opstartkosten_van_toepassing===false ? false : true);
+  if(d.opstartkosten_termijn){ const t=document.getElementById('i_term'); if(t) t.value=d.opstartkosten_termijn; }
   kiesDoctype(d.documenttype==='aankoop'?'aankoop':'verkoop');
   kiesModel(_model);
   set('i_cloze', d.cloze_id);
@@ -1086,13 +1120,18 @@ function _verzamelPayload(){
     courtage_meerprijs_type: _mpType(),
     courtage_meerprijs_drempel: v('i_mp_drempel'),
     vraagprijs: v('i_vp'),
+    zoek_min_prijs: v('z_minprijs') || null,
     zoek_max_prijs: v('z_maxprijs') || null,
-    zoek_type: v('z_type') || null,
+    zoek_type: soortGekozen() || null,
     zoek_locatie: v('z_locatie') || null,
     zoek_oppervlakte: v('z_oppervlakte') || null,
     zoek_aantal_kamers: v('z_kamers') || null,
     zoek_buitenruimte: v('z_buiten') || null,
     zoek_overig: v('z_overig') || null,
+    hypotheek_gecheckt: (state.hyp===true) ? true : (state.hyp===false ? false : null),
+    hypotheekshop_doorsturen: (state.hyp===false && state.hypDoor) ? true : false,
+    opstartkosten_van_toepassing: (state.opstart===false) ? false : true,
+    opstartkosten_termijn: (state.opstart===false) ? null : (v('i_term') || null),
     datum_opdracht: vandaag,
     cloze_id: v('i_cloze') || null,
     herkomst: v('i_herkomst') || null,
