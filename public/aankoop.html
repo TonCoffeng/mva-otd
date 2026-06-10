@@ -388,9 +388,9 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <div class="toggle" data-soort="Bouwgrond" onclick="togSoort(this)"><span class="dot">✓</span>Bouwgrond</div>
             <div class="toggle" data-soort="Opslagruimte" onclick="togSoort(this)"><span class="dot">✓</span>Opslagruimte</div>
             <div class="toggle" data-soort="Berging" onclick="togSoort(this)"><span class="dot">✓</span>Berging</div>
-            <div class="toggle" data-soort="Ligplaats" onclick="togSoort(this)"><span class="dot">✓</span>Ligplaats</div>
           </div>
         </div>
+        <div class="fg"><label>Anders / specifiek (vrij in te vullen)</label><input id="z_soort_anders" placeholder="bijv. woonboot, recreatiewoning, ligplaats…" oninput="render()"></div>
         <div class="fg-row">
           <div class="fg"><label>Budget van (€)</label><input id="z_minprijs" oninput="render()"></div>
           <div class="fg"><label>Budget tot (€)</label><input id="z_maxprijs" oninput="render()"></div>
@@ -469,6 +469,10 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
         <div class="fg" id="fg_term"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
         <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
+        <div class="fg"><label>Beëindigingskosten</label>
+          <div class="toggle aan" id="tg_beeind" onclick="togBeeind()"><span class="dot">✓</span>Alleen daadwerkelijk gemaakte kosten (conform VBO-voorwaarden)</div>
+          <p class="sec-p">Bij voortijdige beëindiging worden geen beëindigingskosten in rekening gebracht, behoudens de daadwerkelijk gemaakte kosten (taxaties, bouwkundige keuring e.d.). Aan = deze gunstige clausule in de overeenkomst; uit = standaard regime.</p>
+        </div>
       </div>
 
       <!-- stap 2 -->
@@ -529,7 +533,7 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 <script>
 // ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
 const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
-const state={stap:0, court:'pct', taal:'nl', hyp:true, hypDoor:false, opstart:true, t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
+const state={stap:0, court:'pct', taal:'nl', hyp:true, hypDoor:false, opstart:true, beeind:true, t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
 
 function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
@@ -647,7 +651,10 @@ function togSpecifiek(){
 }
 function togSoort(el){ if(el) el.classList.toggle('aan'); render(); }
 function soortGekozen(){
-  return [...document.querySelectorAll('#soort-grid .toggle.aan')].map(e=>e.dataset.soort).join(', ');
+  const arr=[...document.querySelectorAll('#soort-grid .toggle.aan')].map(e=>e.dataset.soort);
+  const extra=v('z_soort_anders').trim();
+  if(extra) arr.push(extra);
+  return arr.join(', ');
 }
 function budgetTekst(){
   const van=v('z_minprijs'), tot=v('z_maxprijs');
@@ -676,6 +683,11 @@ function kiesOpstart(ja){
   if(j) j.classList.toggle('aan', ja);
   if(n) n.classList.toggle('aan', !ja);
   const t=document.getElementById('fg_term'); if(t) t.style.display = ja ? 'block' : 'none';
+  render();
+}
+function togBeeind(){
+  state.beeind = !state.beeind;
+  const t=document.getElementById('tg_beeind'); if(t) t.classList.toggle('aan', state.beeind);
   render();
 }
 function zetPrijsmodelOpties(aankoop){
@@ -907,6 +919,7 @@ function render(){
     <h4>Kosten en courtage</h4>
     <div class="pv-court">${court}</div>
     <div class="kv"><span class="k">Opstartkosten</span><span>${state.opstart===false?'niet van toepassing':('van toepassing · '+(v('i_term')||'—'))}</span></div>
+    <div class="kv"><span class="k">Beëindigingskosten</span><span>${state.beeind===false?'standaard regime':'alleen daadwerkelijk gemaakte kosten'}</span></div>
     ${_isAankoop ? '' : '<h4>Afspraken</h4>'+vinkjes}
     ${promotieBlok}`;
   document.getElementById('prod-totaal').textContent=euro(prodTotaal());
@@ -932,7 +945,7 @@ function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 function wisFormulier(){
   ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
    'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel',
-   'z_minprijs','z_maxprijs','z_type','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
+   'z_minprijs','z_maxprijs','z_type','z_soort_anders','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   ['i_bouwvorm','i_soort','i_best','i_gebr','i_herkomst','i_reden'].forEach(id=>{
@@ -951,6 +964,7 @@ function wisFormulier(){
   kiesModel('percentage');
   kiesHyp(true);
   kiesOpstart(true);
+  state.beeind=true; const _tb=document.getElementById('tg_beeind'); if(_tb) _tb.classList.add('aan');
   kiesTaal('nl');
   kiesDoctype('aankoop');
 }
@@ -969,11 +983,15 @@ function _dbDatumNL(s){ if(!s) return ''; const m=String(s).match(/(\d{4})-(\d{2
 function _numVeld(n){ if(n==null||n==='') return ''; const x=Number(n); if(isNaN(x)) return String(n); return Number.isInteger(x)?String(x):String(x).replace('.',','); }
 function _zetSoortMulti(val){
   document.querySelectorAll('#soort-grid .toggle.aan').forEach(e=>e.classList.remove('aan'));
+  const za=document.getElementById('z_soort_anders'); if(za) za.value='';
   if(!val) return;
   const delen = String(val).split(',').map(s=>s.trim()).filter(Boolean);
-  document.querySelectorAll('#soort-grid .toggle').forEach(e=>{
-    if(delen.includes(e.dataset.soort)) e.classList.add('aan');
+  const rest=[];
+  delen.forEach(d=>{
+    const t=[...document.querySelectorAll('#soort-grid .toggle')].find(e=>e.dataset.soort===d);
+    if(t) t.classList.add('aan'); else rest.push(d);
   });
+  if(za && rest.length) za.value=rest.join(', ');
 }
 
 async function laadDossierInBouwer(id){
@@ -1019,6 +1037,8 @@ async function laadDossierInBouwer(id){
   if(d.hypotheek_gecheckt===false && d.hypotheekshop_doorsturen===true && !state.hypDoor) togHypDoor();
   kiesOpstart(d.opstartkosten_van_toepassing===false ? false : true);
   if(d.opstartkosten_termijn){ const t=document.getElementById('i_term'); if(t) t.value=d.opstartkosten_termijn; }
+  state.beeind = (d.geen_beeindigingskosten===false)?false:true;
+  const _tb2=document.getElementById('tg_beeind'); if(_tb2) _tb2.classList.toggle('aan', state.beeind);
   kiesDoctype(d.documenttype==='aankoop'?'aankoop':'verkoop');
   kiesModel(_model);
   set('i_cloze', d.cloze_id);
@@ -1132,6 +1152,7 @@ function _verzamelPayload(){
     hypotheekshop_doorsturen: (state.hyp===false && state.hypDoor) ? true : false,
     opstartkosten_van_toepassing: (state.opstart===false) ? false : true,
     opstartkosten_termijn: (state.opstart===false) ? null : (v('i_term') || null),
+    geen_beeindigingskosten: (state.beeind===false) ? false : true,
     datum_opdracht: vandaag,
     cloze_id: v('i_cloze') || null,
     herkomst: v('i_herkomst') || null,
