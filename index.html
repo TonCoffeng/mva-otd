@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MvA OTD — Opdracht tot dienstverlening</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --navy:#1A2B5F; --navy-light:#25346c; --oranje:#E8500A; --oranje-light:#ff6a20;
+  --wit:#fff; --grijs:#f4f5f8; --grijs-mid:#e2e5ed; --grijs-tekst:#6b7280;
+  --groen:#16a34a; --rood:#dc2626; --geel:#d97706; --blauw-zacht:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);min-height:100vh}
+
+/* HEADER */
+.header{background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header-logo{display:flex;align-items:center;gap:14px;min-width:0}
+.logo-txt{font-weight:800;font-size:16px;letter-spacing:.5px;line-height:.95;color:#fff}
+.logo-txt .o{color:var(--oranje)}
+.header-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:.3px}
+.header-sub{color:rgba(255,255,255,.55);font-size:11px}
+.header-badge{background:var(--oranje);color:#fff;border-radius:20px;padding:4px 13px;font-size:13px;font-weight:600;white-space:nowrap}
+.type-tabs{display:flex;gap:4px;background:rgba(255,255,255,.12);border-radius:22px;padding:4px}
+.type-tab{color:rgba(255,255,255,.65);text-decoration:none;font-size:13px;font-weight:600;padding:6px 16px;border-radius:18px;white-space:nowrap;transition:color .15s}
+.type-tab.actief{background:#fff;color:var(--navy)}
+.type-tab:not(.actief):hover{color:#fff}
+@media(max-width:600px){.type-tab{padding:5px 11px;font-size:12px}.header-badge{display:none}}
+
+/* SCHERM-WRAP */
+.screen{display:none;animation:fade .35s ease both}
+.screen.actief{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* OVERZICHT */
+#overzicht{padding:18px;max-width:680px;margin:0 auto}
+.stats-bar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.stat-card{background:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px;flex:1 1 0;border:2px solid transparent;cursor:pointer;transition:all .15s}
+.stat-card:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.stat-card .num{font-size:21px;font-weight:700;line-height:1}
+.stat-card .lbl{font-size:12px;font-weight:600;color:var(--grijs-tekst);line-height:1.2}
+.stat-card.concept .num{color:var(--geel)} .stat-card.aangeboden .num{color:var(--blauw-zacht)} .stat-card.getekend .num{color:var(--groen)}
+.section-title{font-size:12px;font-weight:600;color:var(--grijs-tekst);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 10px}
+
+.otd-card{background:#fff;border-radius:14px;padding:15px 17px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-left:4px solid var(--grijs-mid);cursor:pointer;transition:transform .15s,box-shadow .15s;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.otd-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.09)}
+.otd-card:active{transform:scale(.99)}
+.otd-card.concept{border-left-color:var(--geel)} .otd-card.aangeboden{border-left-color:var(--blauw-zacht)} .otd-card.getekend{border-left-color:var(--groen)}
+.otd-card .adres{font-size:15px;font-weight:600;color:var(--navy)}
+.otd-card .sub{font-size:12.5px;color:var(--grijs-tekst);margin-top:3px}
+.otd-card .right{text-align:right;flex-shrink:0}
+.bedrag{font-size:15px;font-weight:700;color:var(--navy)}
+.chip{font-size:11px;padding:3px 11px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block;margin-top:4px}
+.kaart-knop{margin-top:8px;background:var(--oranje);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.kaart-knop:hover{filter:brightness(.95)}
+.kaart-knop.ghost{background:#eef0f4;color:var(--navy)}
+.ov-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;padding:18px}
+.ov-box{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.ov-box h3{margin:0 0 6px;color:var(--navy);font-size:18px}
+.ov-box p{margin:0 0 14px;color:var(--grijs-tekst);font-size:14px}
+.ov-box input{width:100%;border:1.5px solid var(--grijs-mid);border-radius:9px;padding:11px;font-size:13px;background:#f8fafc;margin-bottom:14px}
+.ov-knoppen{display:flex;gap:10px}
+.ov-kop{flex:1;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:12px;font-weight:700;cursor:pointer}
+.ov-sluit{background:#fff;color:var(--navy);border:1.5px solid var(--grijs-mid);border-radius:9px;padding:12px 18px;font-weight:700;cursor:pointer}
+.chip-concept{background:#fef3c7;color:#92400e} .chip-aangeboden{background:#dbeafe;color:#1e40af} .chip-getekend{background:#d1fae5;color:#065f46}
+
+.ov-kop-rij{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 12px}
+.dossier-zoek{width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--grijs-mid);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:14px;background:#fff}
+.dossier-zoek:focus{outline:none;border-color:var(--navy)}
+.zoek-rij{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.zoek-rij .dossier-zoek{flex:1;min-width:200px;margin-bottom:0}
+.arch-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--grijs-tekst);white-space:nowrap;cursor:pointer}
+.otd-card.gearchiveerd{opacity:.6}
+.chip.arch{background:#e6e9f0;color:#5b6577}
+.nieuw-btn{background:var(--oranje);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(232,80,10,.35);transition:transform .12s,background .2s;white-space:nowrap}
+.nieuw-btn:active{transform:scale(.96);background:var(--oranje-light)}
+
+/* BOUWER */
+#bouwer{max-width:1400px;margin:0 auto;padding:0}
+.bouwer-top{background:#fff;border-bottom:1px solid var(--grijs-mid);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:58px;z-index:40}
+.top-acties{display:flex;gap:8px;margin-left:auto}
+.top-acties .btn{flex:0 0 auto;padding:8px 14px;font-size:13px;border-radius:8px}
+.top-acties .btn-opslaan{margin-right:0}
+.terug{background:none;border:none;color:var(--navy);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+.steps{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.step{font-size:12px;font-weight:600;color:var(--grijs-tekst);padding:6px 12px;border-radius:999px;background:var(--grijs);cursor:pointer;transition:all .15s;white-space:nowrap}
+.step.actief{background:var(--navy);color:#fff}
+.step.klaar{color:var(--groen)}
+.step.klaar::before{content:"✓ "}
+
+.bouwer-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.invoer{padding:22px;max-height:calc(100vh - 116px);overflow-y:auto}
+.preview-wrap{background:#5b6478;padding:24px;display:flex;justify-content:center;max-height:calc(100vh - 116px);overflow-y:auto}
+
+.veld-sec{display:none}
+.veld-sec.actief{display:block;animation:fade .3s ease both}
+.sec-h{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.sec-p{font-size:13px;color:var(--grijs-tekst);margin-bottom:18px}
+
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;padding:11px 13px;border:1.5px solid var(--grijs-mid);border-radius:9px;font-size:14px;font-family:inherit;color:var(--navy);background:#fff;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--navy)}
+.fg-row{display:flex;gap:10px}.fg-row .fg{flex:1}
+.og-blok{border:1.5px solid var(--grijs-mid);border-radius:11px;padding:13px;margin-top:12px;background:#fafbfc}
+.og-blok-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.og-del{background:none;border:none;color:#b0392f;font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px}
+.og-del:hover{text-decoration:underline}
+.og-add{margin-top:12px;width:100%;background:#fff;border:1.5px dashed var(--navy);color:var(--navy);border-radius:10px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .12s}
+.og-add:hover{background:#f3f6fb}
+
+.toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.toggle{border:1.5px solid var(--grijs-mid);border-radius:10px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;transition:all .15s;background:#fff}
+.toggle:hover{border-color:var(--navy)}
+.toggle.aan{border-color:var(--oranje);background:#fff7f3}
+.toggle .dot{width:18px;height:18px;border-radius:5px;border:2px solid var(--grijs-mid);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;transition:all .15s}
+.toggle.aan .dot{background:var(--oranje);border-color:var(--oranje)}
+
+.courtage-keuze{display:flex;gap:8px;margin-bottom:14px}
+.reken-box{background:#eef3fb;border:1px solid #d6dfee;border-radius:10px;padding:12px 14px;margin:2px 0 14px}
+.rb-titel{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);font-weight:700;margin-bottom:8px}
+.rb-rij{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;padding:3px 0;color:#33405a}
+.rb-rij b{color:var(--navy)}
+.ckeuze{flex:1;border:1.5px solid var(--grijs-mid);border-radius:10px;padding:12px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;color:var(--grijs-tekst);transition:all .15s}
+.ckeuze.aan{border-color:var(--navy);background:var(--navy);color:#fff}
+
+/* producten */
+.prod-laden{color:var(--grijs-tekst);font-size:13px;padding:12px 2px}
+.prod-groep-kop{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;opacity:.65;margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.prod-groep-kop::after{content:"";flex:1;height:1px;background:var(--grijs-mid)}
+.prod-tegels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.prod-tegel{border:1.5px solid var(--grijs-mid);border-radius:10px;padding:11px 13px;cursor:pointer;transition:all .15s;background:#fff;position:relative}
+.prod-tegel:hover{border-color:var(--navy)}
+.prod-tegel.aan{border-color:var(--oranje);background:#fff7f3}
+.prod-tegel.aan::before{content:"✓";position:absolute;top:7px;right:9px;color:var(--oranje);font-weight:800;font-size:13px}
+.prod-tegel .pn{font-size:13px;font-weight:600;color:var(--navy);line-height:1.25;padding-right:14px}
+.prod-tegel .pp{font-size:12px;color:var(--grijs-tekst);margin-top:3px}
+.prod-tegel.pakket .pn::after{content:" • pakket";color:var(--oranje);font-weight:600}
+/* catalogus (overzichtelijke lijst, per categorie) */
+.prod-zoek{margin:6px 0 4px}
+.prod-zoek input{width:100%}
+.prod-cat-kop{font-size:11.5px;font-weight:700;color:var(--grijs-tekst);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px}
+.prod-rij{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1.5px solid var(--grijs-mid);border-radius:9px;margin-bottom:6px;cursor:pointer;transition:border-color .12s,background .12s;background:#fff}
+.prod-rij:hover{border-color:var(--navy)}
+.prod-rij.aan{border-color:var(--oranje);background:#fff7f3}
+.prod-rij .rn{font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.25}
+.prod-rij .rn .rpakket{color:var(--oranje);font-weight:700}
+.prod-rij .rmeta{display:flex;align-items:center;gap:11px;flex-shrink:0}
+.prod-rij .rp{font-size:12px;color:var(--grijs-tekst);white-space:nowrap}
+.prod-rij .rcheck{width:23px;height:23px;border-radius:6px;border:1.6px solid var(--grijs-mid);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;background:#fff;transition:all .12s}
+.prod-rij.aan .rcheck{background:var(--oranje);border-color:var(--oranje)}
+.prod-geen{color:var(--grijs-tekst);font-size:13px;padding:14px 2px}
+.totaal-balk{background:var(--navy);color:#fff;border-radius:10px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-top:14px}
+.totaal-balk .t-lbl{font-size:13px;font-weight:600;opacity:.8}
+.totaal-balk .t-bedrag{font-size:18px}
+
+.nav-knoppen{display:flex;gap:10px;margin-top:24px}
+.btn{padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:transform .1s,background .2s;flex:1}
+.btn-primary{background:var(--oranje);color:#fff}
+.btn-primary:active{transform:scale(.98);background:var(--oranje-light)}
+.btn-ghost{background:var(--grijs);color:var(--navy)}
+.btn-verstuur{background:var(--groen);color:#fff}
+.btn-opslaan{background:var(--navy);color:#fff;margin-right:auto}
+
+/* LIVE PREVIEW (A4) */
+.a4{background:#fff;width:100%;max-width:430px;box-shadow:0 8px 30px rgba(0,0,0,.3);border-radius:3px;padding:30px 32px;font-size:9px;line-height:1.45;color:#222;min-height:600px}
+.a4 .pv-logo{font-weight:800;font-size:15px;color:var(--navy);line-height:.95;margin-bottom:18px}
+.a4 .pv-logo .o{color:var(--oranje)}
+.a4 .pv-titel{font-size:14px;font-weight:700;color:var(--navy)}
+.a4 .pv-obj{font-size:12px;font-weight:700;color:var(--oranje);margin:2px 0 16px}
+.a4 h4{font-size:10px;color:var(--navy);margin:14px 0 5px;font-weight:700}
+.a4 .kv{display:flex;font-size:8.5px;margin:1.5px 0}
+.a4 .kv .k{width:80px;color:#555;flex-shrink:0}
+.a4 .hl{background:#fff3cd;transition:background .4s}
+.a4 .pv-court{font-weight:700;font-size:9px;background:#f4f6fa;border-left:3px solid var(--oranje);padding:7px 9px;border-radius:3px;margin:5px 0}
+.a4 .pv-wwft{font-size:8px;font-style:italic;color:#555;background:#f8f9fc;border-left:2px solid var(--grijs-mid);padding:5px 8px;border-radius:3px;margin:6px 0}
+.a4 .pv-vink{font-size:8.5px;margin:2px 0}
+.a4 .pv-pakket{border-top:1px solid var(--navy);margin-top:14px;padding-top:6px}
+.a4 .pv-pkrow{display:flex;justify-content:space-between;font-weight:700;font-size:9px;color:var(--navy)}
+.a4 .pv-pkitem{font-size:8px;color:#555;margin:1px 0 1px 8px}
+.a4 .pv-tot{display:flex;justify-content:space-between;font-weight:700;border-top:1.5px solid var(--navy);margin-top:8px;padding-top:4px;font-size:9.5px}
+.preview-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.35);color:#fff;font-size:11px;font-weight:600;padding:3px 12px;border-radius:20px}
+
+/* mobiel */
+.mob-preview-btn{display:none}
+@media(max-width:900px){
+  .bouwer-grid{grid-template-columns:1fr}
+  .preview-wrap{display:none}
+  .preview-wrap.mob-open{display:flex;position:fixed;inset:58px 0 0;z-index:60;max-height:none}
+  .invoer{max-height:none}
+  .mob-preview-btn{display:flex;position:fixed;right:18px;bottom:18px;background:var(--navy);color:#fff;border:none;border-radius:30px;padding:13px 20px;font-size:14px;font-weight:700;font-family:inherit;box-shadow:0 6px 18px rgba(26,43,95,.4);cursor:pointer;gap:8px;z-index:65}
+  .mob-sluit{display:block;position:fixed;top:68px;right:18px;background:#fff;border:none;border-radius:20px;width:34px;height:34px;font-size:18px;cursor:pointer;z-index:70;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+}
+.mob-sluit{display:none}
+</style>
+</head>
+<body>
+
+<style>
+  /* ===== AUTH / LOGIN ===== */
+  .header, .screen { display: none; }
+  body.ingelogd .header { display: flex; }
+  #login-screen{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),var(--navy-light));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+  body.ingelogd #login-screen{display:none}
+  .login-card{background:#fff;border-radius:16px;padding:34px 30px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.35);animation:fade .4s ease both}
+  .login-logo{font-weight:800;font-size:15px;letter-spacing:.5px;color:var(--navy);line-height:1.05;margin-bottom:22px}
+  .login-logo span{color:var(--oranje)}
+  .login-card h2{font-size:20px;color:var(--navy);margin-bottom:4px}
+  .login-card p{font-size:13px;color:var(--grijs-tekst);margin-bottom:22px}
+  .login-card .fg{margin-bottom:14px}
+  .login-card label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:5px}
+  .login-card input{width:100%;padding:12px 13px;border:1.5px solid var(--grijs-mid);border-radius:9px;font-size:14px;font-family:inherit;color:var(--navy)}
+  .login-card input:focus{outline:none;border-color:var(--navy)}
+  .btn-login{width:100%;padding:14px;background:var(--oranje);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:6px;transition:background .2s,transform .1s}
+  .btn-login:active{transform:scale(.98);background:var(--oranje-light)}
+  .btn-login:disabled{opacity:.6;cursor:wait}
+  .login-fout{color:var(--rood);font-size:13px;margin-top:12px;min-height:18px}
+  .btn-uitloggen{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn-uitloggen:hover{background:rgba(255,255,255,.25)}
+  .header-rechts{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .zoek-res{background:#fff;border:1px solid var(--grijs-mid);border-radius:8px;margin-top:4px;max-height:230px;overflow-y:auto;display:none;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+  .zoek-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef0f5;display:flex;flex-direction:column;gap:1px}
+  .zoek-item:last-child{border-bottom:none}
+  .zoek-item:hover{background:#f3f5fa}
+  .zoek-item.muted{color:var(--grijs-tekst);cursor:default}
+  .zoek-item strong{font-size:13.5px;color:var(--navy);font-weight:600}
+  .zoek-sub{font-size:12px;color:var(--grijs-tekst)}
+  .zoek-vrij{color:var(--oranje);font-weight:600}
+</style>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">MAKELAARSVAN<span>.</span><br>AMSTERDAM</div>
+    <h2>Opdracht tot dienstverlening</h2>
+    <p>Log in met je MakelaarsVan-account.</p>
+    <div class="fg"><label>E-mailadres</label><input id="login-email" type="email" placeholder="jij@makelaarsvan.nl" autocomplete="username"></div>
+    <div class="fg"><label>Wachtwoord</label><input id="login-pw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')AUTH.login()"></div>
+    <button class="btn-login" onclick="AUTH.login()">Inloggen</button>
+    <div id="login-fout" class="login-fout"></div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-txt">MAKELAARSVAN<span class="o">.</span><br>AMSTERDAM</div>
+    <div>
+      <div class="header-title" id="hdr-titel">Opdracht tot dienstverlening</div>
+      <div class="header-sub" id="hdr-sub">Rogier de Vries</div>
+    </div>
+  </div>
+  <nav class="type-tabs">
+    <a class="type-tab actief" href="index.html">Verkoop</a>
+    <a class="type-tab" href="aankoop.html">Aankoop</a>
+  </nav>
+  <div class="header-rechts">
+    <div class="header-badge" id="hdr-badge">3 dossiers</div>
+    <button class="btn-uitloggen" onclick="AUTH.logout()">Uitloggen</button>
+  </div>
+</div>
+
+<!-- ============ OVERZICHT ============ -->
+<div id="overzicht" class="screen">
+  <div class="stats-bar">
+    <div class="stat-card concept"><span class="num" id="stat-concept">0</span><span class="lbl">Concept</span></div>
+    <div class="stat-card aangeboden"><span class="num" id="stat-aangeboden">0</span><span class="lbl">Aangeboden</span></div>
+    <div class="stat-card getekend"><span class="num" id="stat-ondertekend">0</span><span class="lbl">Ondertekend</span></div>
+  </div>
+  <div class="ov-kop-rij">
+    <div class="section-title" id="overzicht-titel" style="margin:0">Mijn opdrachten</div>
+    <button class="nieuw-btn" onclick="openBouwer()">＋ Nieuwe OTD</button>
+  </div>
+
+  <div class="zoek-rij">
+    <input id="dossier-zoek" class="dossier-zoek" placeholder="Zoek op object of klantnaam…" oninput="filterDossiers()">
+    <label class="arch-toggle"><input type="checkbox" id="toon-archief" onchange="filterDossiers()"> Gearchiveerde tonen</label>
+  </div>
+  <div id="dossier-lijst"></div>
+
+  <div id="link-modal" class="ov-modal">
+    <div class="ov-box">
+      <h3>Opdracht aangeboden ✓</h3>
+      <p id="link-uitleg">De opdracht staat klaar voor de klant.</p>
+      <input id="link-veld" readonly onclick="this.select()">
+      <div class="ov-knoppen">
+        <button id="kopknop" class="ov-kop" onclick="kopieerLink()">Kopieer link</button>
+        <button class="ov-sluit" onclick="sluitLinkModal()">Sluiten</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-modal" class="ov-modal">
+  <div class="ov-box">
+    <h3 id="confirm-titel">Bevestigen</h3>
+    <p id="confirm-tekst"></p>
+    <div class="ov-knoppen">
+      <button class="ov-kop" id="confirm-ja" style="background:var(--groen)" onclick="confirmJa()">Ja</button>
+      <button class="ov-sluit" onclick="confirmNee()">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BOUWER ============ -->
+<div id="bouwer" class="screen">
+  <div class="bouwer-top">
+    <button class="terug" onclick="naarOverzicht()">‹ Terug</button>
+    <div class="steps">
+      <div class="step actief" data-step="0" onclick="ganaarStap(0)">Object &amp; klant</div>
+      <div class="step" data-step="1" onclick="ganaarStap(1)">Courtage</div>
+      <div class="step" data-step="2" onclick="ganaarStap(2)">Afspraken</div>
+      <div class="step" data-step="3" onclick="ganaarStap(3)">Promotieplan</div>
+    </div>
+    <div class="top-acties">
+      <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan-top">💾 Opslaan</button>
+      <button class="btn btn-verstuur" onclick="vraagAanbieden(slaOpEnBied)" id="btn-verstuur-top" style="display:none">Aanbieden ›</button>
+    </div>
+  </div>
+
+  <div class="bouwer-grid">
+    <!-- INVOER -->
+    <div class="invoer">
+      <!-- stap 0 -->
+      <div class="veld-sec actief" data-sec="0">
+        <div class="sec-h">Object &amp; opdrachtgever</div>
+        <div class="sec-p">Haal op uit Realworks of vul handmatig in.</div>
+        <div class="fg" id="fg_makelaar" style="display:none"><label>Opdracht namens makelaar</label>
+          <select id="i_makelaar"><option value="">— Kies makelaar —</option></select>
+        </div>
+        <div class="fg"><label>Taal van de opdracht</label>
+          <div class="courtage-keuze" id="taal-keuze">
+            <div class="ckeuze aan" data-taal="nl" onclick="kiesTaal('nl')">Nederlands</div>
+            <div class="ckeuze" data-taal="nl_en" onclick="kiesTaal('nl_en')">Nederlands + Engels</div>
+          </div>
+        </div>
+        <div class="fg"><label>Object uit Realworks</label>
+          <input id="i_pandzoek" placeholder="Typ adres…" autocomplete="off" oninput="zoekPand()">
+          <div id="i_pand_res" class="zoek-res"></div>
+        </div>
+        <div class="fg"><label>Objectadres</label><input id="i_obj" oninput="render()"></div>
+        <input type="hidden" id="i_rwid" value="">
+        <input type="hidden" id="i_plaats" value="">
+        <input type="hidden" id="i_pc" value="">
+        <div class="fg-row">
+          <div class="fg"><label>Bouwvorm</label>
+            <select id="i_bouwvorm" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Bestaande bouw</option>
+              <option>Nieuwbouw</option>
+              <option>NVT</option>
+            </select>
+          </div>
+          <div class="fg"><label>Soort object</label>
+            <select id="i_soort" onchange="soortGewijzigd()">
+              <option value="">— Kies —</option>
+              <option>Woonhuis</option>
+              <option>Appartement</option>
+              <option>Woning met bedrijfsruimte</option>
+              <option>Parkeerplaats / garagebox</option>
+              <option>Bedrijfspand / kantoor</option>
+              <option>Bouwgrond</option>
+              <option value="__anders">Anders, namelijk…</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg" id="fg_soort_anders" style="display:none"><label>Soort object — namelijk</label><input id="i_soort_anders" placeholder="Typ het soort object…" oninput="render()"></div>
+        <div class="fg-row">
+          <div class="fg"><label>Bestemming</label>
+            <select id="i_best" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Wonen</option>
+              <option>Bedrijfsmatig</option>
+              <option>Gemengd (wonen + bedrijf)</option>
+              <option>Anders</option>
+            </select>
+          </div>
+          <div class="fg"><label>In gebruik als</label>
+            <select id="i_gebr" onchange="render()">
+              <option value="">— Kies —</option>
+              <option>Eigen bewoning</option>
+              <option>Verhuurd</option>
+              <option>Bedrijfsmatig</option>
+              <option>Leegstaand</option>
+              <option>Anders</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>Opdrachtgever zoeken (Cloze)</label>
+          <input id="i_zoek" placeholder="Typ naam of e-mail…" autocomplete="off" oninput="zoekRelatie()">
+          <div id="i_zoek_res" class="zoek-res"></div>
+        </div>
+        <input type="hidden" id="i_cloze" value="">
+        <div class="fg-row">
+          <div class="fg"><label>Voornaam</label><input id="i_vn" oninput="render()"></div>
+          <div class="fg"><label>Achternaam</label><input id="i_an" oninput="render()"></div>
+        </div>
+        <div class="fg-row">
+          <div class="fg"><label>E-mail opdrachtgever</label><input id="i_em" oninput="render()"></div>
+          <div class="fg"><label>Telefoon</label><input id="i_tel" value="" oninput="render()"></div>
+        </div>
+        <div class="fg-row">
+          <div class="fg"><label>Geboorteplaats</label><input id="i_gbp" oninput="render()"></div>
+          <div class="fg"><label>Geboortedatum</label><input id="i_gbd" oninput="render()"></div>
+        </div>
+        <div id="og-extra"></div>
+        <button type="button" class="og-add" onclick="voegOgToe()">+ Partner / extra opdrachtgever</button>
+        <div class="fg-row">
+          <div class="fg"><label>Herkomst relatie</label>
+            <select id="i_herkomst">
+              <option value="">— Kies —</option>
+              <option>Bestaande relatie</option>
+              <option>Eerdere klant</option>
+              <option>Doorverwijzing</option>
+              <option>Open huis</option>
+              <option>Funda</option>
+              <option>Website / online</option>
+              <option>Persoonlijk netwerk</option>
+              <option>Anders</option>
+            </select>
+          </div>
+          <div class="fg"><label>Reden opdracht</label>
+            <select id="i_reden">
+              <option value="">— Kies —</option>
+              <option>Doorstroming</option>
+              <option>Verhuizing regio</option>
+              <option>Gezinsuitbreiding</option>
+              <option>Kleiner / senioren wonen</option>
+              <option>Echtscheiding</option>
+              <option>Nalatenschap / overlijden</option>
+              <option>Financiële redenen</option>
+              <option>Samenwonen / relatie</option>
+              <option>Belegging</option>
+              <option>Anders</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- stap 1 -->
+      <div class="veld-sec" data-sec="1">
+        <div class="sec-h">Courtage &amp; opstartkosten</div>
+        <div class="sec-p">Hoe wordt de vergoeding opgebouwd?</div>
+        <div class="fg"><label>Prijsmodel</label>
+          <select id="i_model" onchange="kiesModel(this.value)">
+            <option value="percentage">Percentage</option>
+            <option value="vast">Vast bedrag</option>
+            <option value="vast_pct">Vast bedrag + percentage</option>
+            <option value="pct_pct_meerprijs">Percentage + percentage boven de basis</option>
+            <option value="pct_vast_meerprijs">Percentage + vast bedrag boven de basis</option>
+          </select>
+        </div>
+        <div class="fg-row">
+          <div class="fg" id="fg_pct"><label>Percentage over de koopsom (incl. BTW)</label><input id="i_pct" oninput="naRekenen()"></div>
+          <div class="fg" id="fg_vast" style="display:none"><label>Vast bedrag (€)</label><input id="i_vast" oninput="naRekenen()"></div>
+        </div>
+        <div id="fg_meerprijs" style="display:none">
+          <div class="fg" id="fg_mptype" style="display:none"><label>Meerprijs-component</label>
+            <select id="i_mp_type" onchange="kiesModel(document.getElementById('i_model').value)">
+              <option value="percentage">Percentage over meerprijs</option>
+              <option value="vast_bedrag">Vast bedrag over meerprijs</option>
+            </select>
+          </div>
+          <div class="fg-row">
+            <div class="fg"><label id="lbl_mp">Percentage boven de basis (%)</label><input id="i_mp_waarde" oninput="naRekenen()"></div>
+            <div class="fg"><label>Bedrag tot de basis (€)</label><input id="i_mp_drempel" placeholder="leeg = vraagprijs" oninput="naRekenen()"></div>
+          </div>
+        </div>
+        <div class="fg"><label>Vraagprijs (€)</label><input id="i_vp" oninput="naRekenen()"></div>
+        <div id="reken-box" class="reken-box" style="display:none"></div>
+        <div class="fg"><label>Betaaltermijn opstartkosten</label>
+          <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
+        <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
+      </div>
+
+      <!-- stap 2 -->
+      <div class="veld-sec" data-sec="2">
+        <div class="sec-h">Afspraken</div>
+        <div class="sec-p">Vinkjes uit de overeenkomst.</div>
+        <div class="toggle-grid">
+          <div class="toggle aan" data-t="bord" onclick="tog('bord')"><span class="dot">✓</span>Verkoopbord plaatsen</div>
+          <div class="toggle aan" data-t="sleutel" onclick="tog('sleutel')"><span class="dot">✓</span>Sleutel in bruikleen</div>
+          <div class="toggle aan" data-t="label" onclick="tog('label')"><span class="dot">✓</span>Energielabel</div>
+          <div class="toggle aan" data-t="mark" onclick="tog('mark')"><span class="dot">✓</span>Marketing toegestaan</div>
+        </div>
+      </div>
+
+      <!-- stap 3 -->
+      <div class="veld-sec" data-sec="3">
+        <div class="sec-h">Woningpromotieplan</div>
+        <div class="sec-p">Veelgebruikte diensten staan klaar — tik om toe te voegen. Daaronder vind je de volledige catalogus.</div>
+
+        <div class="prod-laden" id="prod-laden">Producten laden…</div>
+
+        <div id="prod-veel-wrap" style="display:none">
+          <div class="prod-groep-kop" id="prod-veel-kop">Veelgebruikt</div>
+          <div class="prod-tegels" id="prod-veel"></div>
+        </div>
+
+        <div id="prod-cat-wrap" style="display:none">
+          <div class="prod-groep-kop">Volledige catalogus</div>
+          <div class="fg prod-zoek"><input id="prod-zoek" placeholder="🔍 Zoek in de catalogus…" oninput="filterCat(this.value)"></div>
+          <div id="prod-cat-lijst"></div>
+        </div>
+
+        <div class="totaal-balk"><span class="t-lbl">Promotieplan totaal</span><span class="t-bedrag" id="prod-totaal">€ 0,00</span></div>
+      </div>
+
+      <div class="nav-knoppen">
+        <button class="btn btn-opslaan" onclick="slaOpAlsConcept()" id="btn-opslaan">💾 Opslaan als concept</button>
+        <button class="btn btn-ghost" onclick="vorige()" id="btn-vorige" style="display:none">‹ Vorige</button>
+        <button class="btn btn-primary" onclick="volgende()" id="btn-volgende">Volgende ›</button>
+        <button class="btn btn-verstuur" onclick="vraagAanbieden(slaOpEnBied)" id="btn-verstuur" style="display:none">Opslaan &amp; aanbieden ›</button>
+      </div>
+    </div>
+
+    <!-- LIVE PREVIEW -->
+    <div class="preview-wrap" id="preview-wrap">
+      <button class="mob-sluit" onclick="mobPreview(false)">×</button>
+      <div class="a4" id="a4">
+        <span class="preview-label">live preview</span>
+      </div>
+    </div>
+  </div>
+  <button class="mob-preview-btn" onclick="mobPreview(true)">📄 Bekijk document</button>
+</div>
+
+<script>
+// ---- producten (uit de OTD-database; veelgebruikt = automatisch leren, KERN als startpunt) ----
+const PROD = { alle:[], geleerd:[], gekozen:new Set(), geladen:false };
+const state={stap:0, court:'pct', taal:'nl', t:{bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1}};
+
+function euro(n){return "€ "+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+const _naamVan  = p => (p.commerciele_naam || p.naam || '').trim();
+const _prijsVan = p => Number(p.prijs_incl_btw || 0);
+
+// welke makelaar is op dit moment actief (voor "automatisch leren")
+function huidigeMakelaarId(){
+  const fg = document.getElementById('fg_makelaar');
+  if(fg && fg.style.display!=='none'){ return (document.getElementById('i_makelaar').value||'').trim(); }
+  return _eigenMakelaarId || '';
+}
+
+async function laadProducten(){
+  const laden = document.getElementById('prod-laden');
+  try{
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const mk = huidigeMakelaarId();
+    const url = '/.netlify/functions/otd-producten' + (mk ? ('?makelaar='+encodeURIComponent(mk)) : '');
+    const res = await fetch(url, { headers:{ Authorization:'Bearer '+token } });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'laden faalde');
+    PROD.alle    = Array.isArray(j.producten) ? j.producten : [];
+    PROD.geleerd = Array.isArray(j.geleerd) ? j.geleerd : [];
+    PROD.geladen = true;
+    if(laden) laden.style.display='none';
+    document.getElementById('prod-veel-wrap').style.display='';
+    document.getElementById('prod-cat-wrap').style.display='';
+    renderVeelgebruikt(); renderCatalogus(''); render();
+  }catch(e){
+    if(laden){ laden.style.display=''; laden.textContent='Kon de producten niet laden. Probeer het later opnieuw.'; }
+  }
+}
+
+// veelgebruikte set: geleerd (indien historie) anders snelkeuze (KERN)
+function veelgebruikteProducten(){
+  if(PROD.geleerd.length){
+    const idx = Object.fromEntries(PROD.alle.map(p=>[p.id,p]));
+    const uit = PROD.geleerd.map(id=>idx[id]).filter(Boolean).slice(0,10);
+    if(uit.length) return uit;
+  }
+  // KERN-set op basis van snelkeuze (Tier 1), numeriek gesorteerd
+  const kern = PROD.alle
+    .filter(p=>p.snelkeuze!==null && p.snelkeuze!==undefined && p.snelkeuze!=='')
+    .sort((a,b)=>Number(a.snelkeuze)-Number(b.snelkeuze));
+  if(kern.length) return kern;
+  // Vangnet: nooit een lege sectie tonen (bv. als 'snelkeuze' niet meekomt uit de backend)
+  return PROD.alle.slice(0,8);
+}
+
+function renderVeelgebruikt(){
+  const lijst = veelgebruikteProducten();
+  document.getElementById('prod-veel-kop').textContent =
+    PROD.geleerd.length ? 'Veelgebruikt — op basis van je eerdere opdrachten' : 'Veelgebruikt';
+  document.getElementById('prod-veel').innerHTML = lijst.map(p=>{
+    const aan = PROD.gekozen.has(p.id);
+    return `<div class="prod-tegel ${p.is_pakket?'pakket':''} ${aan?'aan':''}" onclick="togProduct('${p.id}')">
+      <div class="pn">${_naamVan(p)}</div><div class="pp">${euro(_prijsVan(p))}</div></div>`;
+  }).join('');
+}
+
+function renderCatalogus(filter){
+  const f = (filter||'').toLowerCase().trim();
+  const box = document.getElementById('prod-cat-lijst');
+  const items = PROD.alle.filter(p=>!f || _naamVan(p).toLowerCase().includes(f) || (p.categorie||'').toLowerCase().includes(f));
+  if(!items.length){ box.innerHTML='<div class="prod-geen">Geen producten gevonden.</div>'; return; }
+  const volg = ['Woningpromotie','Verkoopgereed maken van uw woning','Aanvullende diensten','Opstartkosten'];
+  const groepen = {};
+  items.forEach(p=>{ const c=p.categorie||'Overig'; (groepen[c]=groepen[c]||[]).push(p); });
+  const cats = Object.keys(groepen).sort((a,b)=>{
+    const ia=volg.indexOf(a), ib=volg.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  box.innerHTML = cats.map(c=>{
+    const rijen = groepen[c].map(p=>{
+      const aan = PROD.gekozen.has(p.id);
+      const pkt = p.is_pakket ? ' <span class="rpakket">• pakket</span>' : '';
+      return `<div class="prod-rij ${aan?'aan':''}" onclick="togProduct('${p.id}')">
+        <div class="rn">${_naamVan(p)}${pkt}</div>
+        <div class="rmeta"><span class="rp">${euro(_prijsVan(p))}</span><span class="rcheck">${aan?'✓':''}</span></div>
+      </div>`;
+    }).join('');
+    return `<div class="prod-cat-kop">${c}</div>${rijen}`;
+  }).join('');
+}
+
+function filterCat(v){ renderCatalogus(v); }
+
+function togProduct(id){
+  if(PROD.gekozen.has(id)) PROD.gekozen.delete(id); else PROD.gekozen.add(id);
+  renderVeelgebruikt();
+  const zoek = document.getElementById('prod-zoek');
+  renderCatalogus(zoek ? zoek.value : '');
+  render();
+}
+
+function gekozenProducten(){ return PROD.alle.filter(p=>PROD.gekozen.has(p.id)); }
+function prodTotaal(){ return gekozenProducten().reduce((s,p)=>s+_prijsVan(p),0); }
+
+function tog(k){state.t[k]=state.t[k]?0:1;
+  document.querySelector(`[data-t="${k}"]`).classList.toggle('aan',!!state.t[k]); render()}
+function kiesTaal(t){state.taal=t;
+  document.querySelectorAll('#taal-keuze .ckeuze').forEach(e=>e.classList.toggle('aan',e.dataset.taal===t)); render();}
+const COURTAGE_MODELLEN = {
+  percentage:         { basisPct:true,  basisVast:false, mp:null },
+  vast:               { basisPct:false, basisVast:true,  mp:null },
+  vast_pct:           { basisPct:false, basisVast:true,  mp:'percentage' },
+  vast_pct_meerprijs: { basisPct:false, basisVast:true,  mp:'percentage' },
+  pct_pct_meerprijs:  { basisPct:true,  basisVast:false, mp:'percentage' },
+  pct_vast_meerprijs: { basisPct:true,  basisVast:false, mp:'vast_bedrag' },
+  vrij:               { basisPct:true,  basisVast:true,  mp:'keuze' }
+};
+function _mpType(){
+  const cfg = COURTAGE_MODELLEN[state.court] || {};
+  if(!cfg.mp) return null;
+  return cfg.mp==='keuze' ? (document.getElementById('i_mp_type').value||'percentage') : cfg.mp;
+}
+function kiesModel(m){
+  state.court = m;
+  const cfg = COURTAGE_MODELLEN[m] || COURTAGE_MODELLEN.percentage;
+  const sel = document.getElementById('i_model'); if(sel && sel.value!==m) sel.value=m;
+  document.getElementById('fg_pct').style.display  = cfg.basisPct  ? '' : 'none';
+  document.getElementById('fg_vast').style.display = cfg.basisVast ? '' : 'none';
+  document.getElementById('fg_meerprijs').style.display = cfg.mp ? '' : 'none';
+  document.getElementById('fg_mptype').style.display = (cfg.mp==='keuze') ? '' : 'none';
+  const lbl = document.getElementById('lbl_mp');
+  if(lbl) lbl.textContent = (_mpType()==='vast_bedrag') ? 'Vast bedrag boven de basis (€)' : 'Percentage boven de basis (%)';
+  naRekenen();
+}
+// terugcompatibel voor eventuele oude aanroepen
+function kiesCourtage(c){ kiesModel(c==='vast'?'vast':'percentage'); }
+
+function _num(id){ const el=document.getElementById(id); if(!el) return 0; const t=String(el.value||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'); const n=parseFloat(t); return isNaN(n)?0:n; }
+function berekenCourtage(koopsom){
+  const cfg = COURTAGE_MODELLEN[state.court] || {};
+  let bedrag = 0;
+  const heeftBasis = !!cfg.mp;
+  const drempel = heeftBasis ? (_num('i_mp_drempel') || _num('i_vp')) : 0;
+  // component tot de basis
+  if(cfg.basisVast) bedrag += _num('i_vast');
+  if(cfg.basisPct){
+    const grond = heeftBasis ? Math.min(koopsom, drempel) : koopsom;
+    bedrag += _num('i_pct')*grond/100;
+  }
+  // component boven de basis
+  if(heeftBasis){
+    const meer = Math.max(0, koopsom - drempel);
+    if(meer>0){
+      if(_mpType()==='vast_bedrag') bedrag += _num('i_mp_waarde');
+      else bedrag += _num('i_mp_waarde')*meer/100;
+    }
+  }
+  return bedrag;
+}
+function updateRekenvoorbeeld(){
+  const box = document.getElementById('reken-box'); if(!box) return;
+  const vp = _num('i_vp');
+  const cfg = COURTAGE_MODELLEN[state.court] || {};
+  if(!vp){ box.style.display='none'; return; }
+  const fmt = n => '€ '+Math.round(n).toLocaleString('nl-NL');
+  let rijen = '<div class="rb-rij"><span>Bij vraagprijs ('+fmt(vp)+')</span><b>'+fmt(berekenCourtage(vp))+'</b></div>';
+  if(cfg.mp){
+    rijen += '<div class="rb-rij"><span>Bij '+fmt(vp+10000)+'</span><b>'+fmt(berekenCourtage(vp+10000))+'</b></div>';
+    rijen += '<div class="rb-rij"><span>Bij '+fmt(vp+25000)+'</span><b>'+fmt(berekenCourtage(vp+25000))+'</b></div>';
+  }
+  box.innerHTML = '<div class="rb-titel">Rekenvoorbeeld courtage (incl. BTW)</div>'+rijen;
+  box.style.display='';
+}
+function courtageOmschrijving(){
+  const cfg = COURTAGE_MODELLEN[state.court] || {};
+  const heeftBasis = !!cfg.mp;
+  const drempel = heeftBasis ? (_num('i_mp_drempel') || _num('i_vp')) : 0;
+  const dTxt = drempel ? ('€ '+Math.round(drempel).toLocaleString('nl-NL')) : 'de basis';
+  const delen = [];
+  if(cfg.basisPct && _num('i_pct')) delen.push('<b>'+v('i_pct')+'%</b>'+(heeftBasis?(' over het deel tot '+dTxt):' over de koopsom'));
+  if(cfg.basisVast && _num('i_vast')) delen.push('een vast bedrag van <b>€ '+v('i_vast')+'</b>');
+  if(cfg.mp && _num('i_mp_waarde')){
+    if(_mpType()==='vast_bedrag') delen.push('een vast bedrag van <b>€ '+v('i_mp_waarde')+'</b> bij verkoop boven '+dTxt);
+    else delen.push('<b>'+v('i_mp_waarde')+'%</b> over het deel boven '+dTxt);
+  }
+  if(!delen.length) return 'De courtage wordt nader bepaald.';
+  return 'De courtage bedraagt '+delen.join(' plus ')+', inclusief BTW.';
+}
+function berekenKnop(){
+  const box = document.getElementById('reken-box'); if(!box) return;
+  if(!_num('i_vp')){
+    box.style.display='';
+    box.innerHTML = '<div class="rb-titel">Rekenvoorbeeld courtage</div><div class="rb-rij"><span>Vul eerst de vraagprijs in om door te rekenen.</span></div>';
+    return;
+  }
+  updateRekenvoorbeeld();
+}
+function naRekenen(){ updateRekenvoorbeeld(); render(); }
+
+function v(id){return document.getElementById(id).value}
+function flash(el){if(!el)return; el.classList.add('hl'); setTimeout(()=>el.classList.remove('hl'),400)}
+
+function soortGewijzigd(){
+  const sel = document.getElementById('i_soort').value;
+  document.getElementById('fg_soort_anders').style.display = (sel==='__anders') ? '' : 'none';
+  render();
+}
+function soortObjectWaarde(){
+  const s = v('i_soort');
+  return s==='__anders' ? (v('i_soort_anders')||'') : s;
+}
+
+// ---- opdrachtgevers (1 vast + extra) ----
+let ogTeller = 1;
+function voegOgToe(){
+  ogTeller++;
+  const n = ogTeller;
+  const div = document.createElement('div');
+  div.className = 'og-blok'; div.setAttribute('data-og', n);
+  div.innerHTML =
+    '<div class="og-blok-h"><span>Opdrachtgever</span><button type="button" class="og-del" onclick="verwijderOg('+n+')">verwijderen</button></div>'
+    + '<div class="fg-row"><div class="fg"><label>Voornaam</label><input id="og'+n+'_vn" oninput="render()"></div>'
+    + '<div class="fg"><label>Achternaam</label><input id="og'+n+'_an" oninput="render()"></div></div>'
+    + '<div class="fg-row"><div class="fg"><label>E-mail</label><input id="og'+n+'_em" oninput="render()"></div>'
+    + '<div class="fg"><label>Telefoon</label><input id="og'+n+'_tel" oninput="render()"></div></div>'
+    + '<div class="fg-row"><div class="fg"><label>Geboorteplaats</label><input id="og'+n+'_gbp" oninput="render()"></div>'
+    + '<div class="fg"><label>Geboortedatum</label><input id="og'+n+'_gbd" oninput="render()"></div></div>';
+  document.getElementById('og-extra').appendChild(div);
+  hernummerOg(); render();
+}
+function verwijderOg(n){
+  const b = document.querySelector('#og-extra .og-blok[data-og="'+n+'"]');
+  if(b) b.remove();
+  hernummerOg(); render();
+}
+function hernummerOg(){
+  document.querySelectorAll('#og-extra .og-blok').forEach((b,i)=>{
+    const sp=b.querySelector('.og-blok-h span'); if(sp) sp.textContent='Opdrachtgever '+(i+2);
+  });
+}
+function verzamelOpdrachtgevers(){
+  const lijst = [{
+    voornamen:v('i_vn')||null, achternaam:v('i_an')||null, email:v('i_em')||null,
+    telefoon:v('i_tel')||null, geboorteplaats:v('i_gbp')||null, geboortedatum:v('i_gbd')||null
+  }];
+  document.querySelectorAll('#og-extra .og-blok').forEach(b=>{
+    const n=b.getAttribute('data-og');
+    const o={ voornamen:v('og'+n+'_vn')||null, achternaam:v('og'+n+'_an')||null, email:v('og'+n+'_em')||null,
+      telefoon:v('og'+n+'_tel')||null, geboorteplaats:v('og'+n+'_gbp')||null, geboortedatum:v('og'+n+'_gbd')||null };
+    if(o.voornamen||o.achternaam||o.email) lijst.push(o);
+  });
+  return lijst;
+}
+
+function render(){
+  const ogs = verzamelOpdrachtgevers();
+  const ogHtml = ogs.map((o,i)=>{
+    const nm=[o.voornamen,o.achternaam].filter(Boolean).join(' ')||'—';
+    const lbl = ogs.length>1 ? ('Opdrachtgever '+(i+1)) : 'Naam';
+    let h = `<div class="kv"><span class="k">${lbl}</span><span>${nm}</span></div>`;
+    if(o.email) h += `<div class="kv"><span class="k">E-mail</span><span>${o.email}</span></div>`;
+    return h;
+  }).join('');
+  const court = courtageOmschrijving();
+  const vinkjes=[
+    ['Verkoopbord', state.t.bord],['Sleutel in bruikleen', state.t.sleutel],
+    ['Energielabel', state.t.label],['Marketing', state.t.mark]
+  ].map(([l,on])=>`<div class="pv-vink">${on?'☑':'☐'} ${l}</div>`).join("");
+
+  const gekozen = gekozenProducten();
+  let pkHtml = gekozen.map(p=>`
+      <div class="pv-pkrow"><span>${_naamVan(p)}</span><span>${euro(_prijsVan(p))}</span></div>`).join("");
+  if(!gekozen.length) pkHtml=`<div class="pv-pkitem">Nog geen diensten geselecteerd.</div>`;
+
+  document.getElementById('a4').innerHTML=`
+    <span class="preview-label">live preview</span>
+    <div class="pv-logo">MAKELAARSVAN<span class="o">.</span><br>AMSTERDAM</div>
+    <div class="pv-titel">Opdracht tot dienstverlening</div>
+    <div class="pv-obj">${v('i_obj')||'—'}</div>
+    <h4>Opdrachtgever${ogs.length>1?'s':''}</h4>
+    ${ogHtml||'<div class="kv"><span class="k">Naam</span><span>—</span></div>'}
+    <div class="pv-wwft">Na ondertekening wordt automatisch het verplichte cliëntenonderzoek uitgevoerd. De opdracht wordt pas actief in behandeling genomen nadat de benodigde controles en dossiergegevens volledig zijn verwerkt.</div>
+    <h4>Object</h4>
+    <div class="kv"><span class="k">Bouwvorm</span><span>${v('i_bouwvorm')||'—'}</span></div>
+    <div class="kv"><span class="k">Soort object</span><span>${soortObjectWaarde()||'—'}</span></div>
+    <div class="kv"><span class="k">Bestemming</span><span>${v('i_best')||'—'}</span></div>
+    <div class="kv"><span class="k">In gebruik als</span><span>${v('i_gebr')||'—'}</span></div>
+    <div class="kv"><span class="k">Vraagprijs</span><span>€ ${v('i_vp')} k.k.</span></div>
+    <div class="kv"><span class="k">Aanvaarding</span><span>${v('i_aanv')}</span></div>
+    <h4>Kosten en courtage</h4>
+    <div class="pv-court">${court}</div>
+    <div class="kv"><span class="k">Opstartkosten</span><span>betaalwijze: ${v('i_term')}</span></div>
+    <h4>Afspraken</h4>
+    ${vinkjes}
+    <div class="pv-pakket">
+      <h4 style="margin-top:0">Woningpromotieplan</h4>
+      ${pkHtml}
+      <div class="pv-tot"><span>Totaal</span><span>${euro(prodTotaal())}</span></div>
+    </div>`;
+  document.getElementById('prod-totaal').textContent=euro(prodTotaal());
+}
+
+// navigatie
+function ganaarStap(n){
+  state.stap=n;
+  document.querySelectorAll('.step').forEach((s,i)=>{
+    s.classList.toggle('actief',i===n); s.classList.toggle('klaar',i<n);
+  });
+  document.querySelectorAll('.veld-sec').forEach((s,i)=>s.classList.toggle('actief',i===n));
+  document.getElementById('btn-vorige').style.display = n>0?'block':'none';
+  document.getElementById('btn-volgende').style.display = n<3?'block':'none';
+  document.getElementById('btn-verstuur').style.display = n===3?'block':'none';
+  const vt=document.getElementById('btn-verstuur-top'); if(vt) vt.style.display = n===3?'inline-flex':'none';
+  document.querySelector('.invoer').scrollTop=0;
+}
+function volgende(){if(state.stap<3)ganaarStap(state.stap+1)}
+function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
+
+// alle invoervelden terug naar een schone staat (voor een nieuwe OTD)
+function wisFormulier(){
+  ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
+   'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  ['i_bouwvorm','i_soort','i_best','i_gebr','i_herkomst','i_reden'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const aanv=document.getElementById('i_aanv'); if(aanv) aanv.value='in overleg';
+  document.getElementById('og-extra').innerHTML=''; ogTeller=1;
+  document.getElementById('fg_soort_anders').style.display='none';
+  PROD.gekozen = new Set();
+  state.t={bord:1,sleutel:1,label:1,mark:1,c_email:1,c_wa:1,c_sms:1,c_tel:1};
+  document.querySelectorAll('.toggle[data-t]').forEach(e=>{
+    const k=e.dataset.t; e.classList.toggle('aan',!!state.t[k]);
+  });
+  const _mpt0=document.getElementById('i_mp_type'); if(_mpt0) _mpt0.value='percentage';
+  kiesModel('percentage');
+  kiesTaal('nl');
+}
+
+// helpers voor terugladen
+function _zetSelect(id,val){ const el=document.getElementById(id); if(el) el.value=(val==null?'':val); }
+function _zetSoort(val){
+  const sel=document.getElementById('i_soort'); if(!sel) return;
+  const bekend=['Woonhuis','Appartement','Woning met bedrijfsruimte','Parkeerplaats / garagebox','Bedrijfspand / kantoor','Bouwgrond'];
+  const anders=document.getElementById('fg_soort_anders');
+  if(val && bekend.includes(val)){ sel.value=val; if(anders) anders.style.display='none'; }
+  else if(val){ sel.value='__anders'; if(anders) anders.style.display=''; const a=document.getElementById('i_soort_anders'); if(a) a.value=val; }
+  else { sel.value=''; if(anders) anders.style.display='none'; }
+}
+function _dbDatumNL(s){ if(!s) return ''; const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'-'+m[2]+'-'+m[1]):String(s); }
+function _numVeld(n){ if(n==null||n==='') return ''; const x=Number(n); if(isNaN(x)) return String(n); return Number.isInteger(x)?String(x):String(x).replace('.',','); }
+
+async function laadDossierInBouwer(id){
+  const token = await geldigeToken();
+  if(!token){ sessieVerlopen(); return; }
+  const res = await fetch('/.netlify/functions/otd-dossiers?id='+encodeURIComponent(id), { headers:{ Authorization:'Bearer '+token } });
+  const j = await res.json();
+  if(!res.ok) throw new Error(j.error||'laden faalde');
+  const d = j.dossier || {};
+  document.getElementById('hdr-badge').textContent = (d.status==='concept') ? 'Concept' : (STATUS[d.status]?STATUS[d.status].label:'Verkoop');
+
+  // makelaar (directie-dropdown) — vóór het laden van producten zodat de geleerde set klopt
+  const fg = document.getElementById('fg_makelaar');
+  if(fg && fg.style.display!=='none' && d.makelaar_id){
+    const sel=document.getElementById('i_makelaar'); if(sel) sel.value=d.makelaar_id;
+  }
+  kiesTaal(d.taal==='nl_en'?'nl_en':'nl');
+
+  const set=(fid,val)=>{ const el=document.getElementById(fid); if(el) el.value=(val==null?'':val); };
+  set('i_obj', d.object_adres); set('i_plaats', d.object_plaats); set('i_pc', d.object_postcode); set('i_rwid', d.realworks_object_id);
+  _zetSelect('i_bouwvorm', d.bouwvorm);
+  _zetSoort(d.soort_object);
+  _zetSelect('i_best', d.bestemming);
+  _zetSelect('i_gebr', d.in_gebruik_als);
+  _zetSelect('i_herkomst', d.herkomst_relatie);
+  _zetSelect('i_reden', d.reden_opdracht);
+  const _model = d.courtage_model || (d.courtage_type==='vast_bedrag' ? 'vast' : 'percentage');
+  const _mpt = document.getElementById('i_mp_type'); if(_mpt && d.courtage_meerprijs_type) _mpt.value = d.courtage_meerprijs_type;
+  set('i_pct', _numVeld(d.courtage_pct_incl));
+  set('i_vast', _numVeld(d.courtage_vast_bedrag));
+  set('i_mp_waarde', _numVeld(d.courtage_meerprijs_waarde));
+  set('i_mp_drempel', _numVeld(d.courtage_meerprijs_drempel));
+  set('i_vp', _numVeld(d.vraagprijs));
+  kiesModel(_model);
+  set('i_cloze', d.cloze_id);
+
+  const ogs = j.opdrachtgevers || [];
+  if(ogs[0]){ const o=ogs[0];
+    set('i_vn', o.voornamen); set('i_an', o.achternaam); set('i_em', o.email);
+    set('i_tel', o.telefoon_mobiel||o.telefoon_thuis); set('i_gbp', o.geboorteplaats); set('i_gbd', _dbDatumNL(o.geboortedatum));
+  }
+  for(let i=1;i<ogs.length;i++){
+    voegOgToe(); const n=ogTeller; const o=ogs[i];
+    set('og'+n+'_vn',o.voornamen); set('og'+n+'_an',o.achternaam); set('og'+n+'_em',o.email);
+    set('og'+n+'_tel',o.telefoon_mobiel||o.telefoon_thuis); set('og'+n+'_gbp',o.geboorteplaats); set('og'+n+'_gbd',_dbDatumNL(o.geboortedatum));
+  }
+
+  // producten: eerst catalogus laden, dan de eerder gekozen producten aanvinken
+  await laadProducten();
+  PROD.gekozen = new Set((j.producten||[]).filter(Boolean));
+  renderVeelgebruikt();
+  const zoek=document.getElementById('prod-zoek');
+  renderCatalogus(zoek?zoek.value:'');
+  render();
+}
+
+async function openBouwer(dossierId){
+  window.HUIDIG_DOSSIER = dossierId || null;
+  document.getElementById('overzicht').classList.remove('actief');
+  document.getElementById('bouwer').classList.add('actief');
+  document.getElementById('hdr-titel').textContent = dossierId ? "Concept bewerken" : "Nieuwe OTD";
+  document.getElementById('hdr-badge').textContent="Verkoop";
+  // schone start
+  wisFormulier();
+  const laden = document.getElementById('prod-laden');
+  if(laden){ laden.style.display=''; laden.textContent='Producten laden…'; }
+  document.getElementById('prod-veel-wrap').style.display='none';
+  document.getElementById('prod-cat-wrap').style.display='none';
+  ganaarStap(0); render(); laadPanden(); window.scrollTo(0,0);
+  await laadMakelaarKeuze();   // zet eventueel _eigenMakelaarId + directie-dropdown
+  if(dossierId){
+    try{ await laadDossierInBouwer(dossierId); }
+    catch(e){ alert('Kon dit dossier niet laden: '+(e.message||e)); laadProducten(); }
+  } else {
+    laadProducten();           // catalogus + (later) geleerde set voor deze makelaar
+  }
+}
+function naarOverzicht(){
+  document.getElementById('bouwer').classList.remove('actief');
+  document.getElementById('overzicht').classList.add('actief');
+  document.getElementById('hdr-titel').textContent="Opdracht tot dienstverlening";
+  laadDossiers();
+}
+function mobPreview(open){
+  document.getElementById('preview-wrap').classList.toggle('mob-open',open);
+}
+
+// ===== OPSLAAN (concept wegschrijven) =====
+let _eigenMakelaarId = null;
+async function laadMakelaarKeuze(){
+  try{
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-opslaan', { headers:{ Authorization:'Bearer '+token } });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    _eigenMakelaarId = j.eigen_makelaar_id || null;
+    const fg = document.getElementById('fg_makelaar');
+    const sel = document.getElementById('i_makelaar');
+    if(j.is_directie){
+      sel.innerHTML = '<option value="">— Kies makelaar —</option>' +
+        (j.makelaars||[]).map(m=>'<option value="'+m.id+'">'+(m.naam||m.entiteit_naam||m.id)+'</option>').join('');
+      sel.onchange = ()=>{ if(PROD.geladen) laadProducten(); };
+      fg.style.display='';
+    } else {
+      fg.style.display='none';
+    }
+  }catch(e){ /* stil — bij opslaan komt een nette melding indien nodig */ }
+}
+function _verzamelPayload(){
+  const nu = new Date();
+  const vandaag = String(nu.getDate()).padStart(2,'0')+'-'+String(nu.getMonth()+1).padStart(2,'0')+'-'+nu.getFullYear();
+  return {
+    documenttype:'verkoop',
+    taal: state.taal || 'nl',
+    makelaar_id: null,
+    dossier_id: window.HUIDIG_DOSSIER || null,
+    object_adres: v('i_obj').trim(),
+    object_plaats: v('i_plaats') || null,
+    object_postcode: v('i_pc') || null,
+    realworks_object_id: v('i_rwid') || null,
+    bestemming: v('i_best') || null,
+    in_gebruik_als: v('i_gebr') || null,
+    bouwvorm: v('i_bouwvorm') || null,
+    soort_object: soortObjectWaarde() || null,
+    courtage_model: state.court,
+    courtage_type: (COURTAGE_MODELLEN[state.court] && COURTAGE_MODELLEN[state.court].basisPct) ? 'percentage' : 'vast_bedrag',
+    courtage_pct: v('i_pct'),
+    courtage_vast: v('i_vast'),
+    courtage_meerprijs_waarde: v('i_mp_waarde'),
+    courtage_meerprijs_type: _mpType(),
+    courtage_meerprijs_drempel: v('i_mp_drempel'),
+    vraagprijs: v('i_vp'),
+    datum_opdracht: vandaag,
+    cloze_id: v('i_cloze') || null,
+    herkomst: v('i_herkomst') || null,
+    reden: v('i_reden') || null,
+    producten: Array.from(PROD.gekozen),
+    opdrachtgevers: verzamelOpdrachtgevers()
+  };
+}
+async function _slaOpConcept(){
+  const obj = v('i_obj').trim();
+  if(!obj){ alert('Vul minimaal een objectadres in.'); return null; }
+  const fgMak = document.getElementById('fg_makelaar');
+  let makelaarId = null;
+  if(fgMak && fgMak.style.display !== 'none'){
+    makelaarId = document.getElementById('i_makelaar').value;
+    if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return null; }
+  }
+  const token = await geldigeToken();
+  if(!token){ sessieVerlopen(); return null; }
+  const payload = _verzamelPayload();
+  payload.makelaar_id = makelaarId;
+  const res = await fetch('/.netlify/functions/otd-opslaan', {
+    method:'POST',
+    headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+  if(!res.ok) throw new Error(j.error||'opslaan faalde');
+  return j.dossier_id;
+}
+async function slaOpAlsConcept(){
+  const btn = document.getElementById('btn-opslaan');
+  const oud = btn.textContent; btn.disabled = true; btn.textContent = 'Opslaan…';
+  try{
+    const id = await _slaOpConcept();
+    if(!id){ btn.disabled = false; btn.textContent = oud; return; }
+    btn.textContent = 'Opgeslagen ✓';
+    setTimeout(naarOverzicht, 600);
+  }catch(e){
+    alert('Opslaan mislukt: '+(e.message||e));
+    btn.disabled = false; btn.textContent = oud;
+  }
+}
+async function slaOpEnBied(){
+  const btn = document.getElementById('btn-verstuur');
+  const oud = btn.textContent; btn.disabled = true; btn.textContent = 'Bezig…';
+  try{
+    const id = await _slaOpConcept();
+    if(!id){ btn.disabled = false; btn.textContent = oud; return; }
+    btn.disabled = false; btn.textContent = oud;
+    naarOverzicht();
+    await biedAan(id);
+  }catch(e){
+    alert('Mislukt: '+(e.message||e));
+    btn.disabled = false; btn.textContent = oud;
+  }
+}
+
+// ===== RELATIES (opdrachtgever zoeken in Cloze) =====
+let _zoekTimer = null;
+function zoekRelatie(){
+  clearTimeout(_zoekTimer);
+  const q = document.getElementById('i_zoek').value.trim();
+  const box = document.getElementById('i_zoek_res');
+  if(q.length < 2){ box.innerHTML=''; box.style.display='none'; return; }
+  _zoekTimer = setTimeout(async () => {
+    box.style.display='block';
+    box.innerHTML = '<div class="zoek-item muted">Zoeken…</div>';
+    try {
+      const token = await geldigeToken();
+      if(!token){ sessieVerlopen(); return; }
+      const res = await fetch('/.netlify/functions/otd-relaties?q=' + encodeURIComponent(q), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const j = await res.json();
+      if(!res.ok) throw new Error(j.error || 'fout');
+      const rel = j.relaties || [];
+      window._REL = {};
+      if(!rel.length){ box.innerHTML = '<div class="zoek-item muted">Geen relaties gevonden</div>'; return; }
+      box.innerHTML = rel.map((r,i) => {
+        window._REL[i] = r;
+        const vrij = r.eigenaar ? '' : ' <span class="zoek-vrij">· niet gekoppeld</span>';
+        const sub = (r.email || r.telefoon || '') + vrij;
+        return '<div class="zoek-item" onclick="kiesRelatie('+i+')"><strong>'+(r.naam||'(naamloos)')+'</strong><span class="zoek-sub">'+sub+'</span></div>';
+      }).join('');
+    } catch(e){
+      box.innerHTML = '<div class="zoek-item muted">Kon niet zoeken: '+(e.message||e)+'</div>';
+    }
+  }, 350);
+}
+function kiesRelatie(i){
+  const r = (window._REL||{})[i]; if(!r) return;
+  const parts = (r.naam||'').trim().split(/\s+/);
+  const vn = parts.shift() || '';
+  const an = parts.join(' ');
+  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.value = val; };
+  set('i_vn', vn); set('i_an', an); set('i_em', r.email||''); set('i_tel', r.telefoon||'');
+  set('i_cloze', r.cloze_id||''); set('i_zoek', r.naam||'');
+  const box = document.getElementById('i_zoek_res'); box.innerHTML=''; box.style.display='none';
+  render();
+}
+
+// ===== PANDEN (objectkeuze uit Realworks-aanbod) =====
+function _cap(s){ return (s||'').toLowerCase().replace(/\b\w/g, c=>c.toUpperCase()); }
+async function laadPanden(){
+  window._PANDEN = [];
+  if(!sb) return;
+  try {
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-panden', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error || 'fout');
+    window._PANDEN = (j.panden || []).map(p => ({
+      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||''
+    }));
+  } catch(e){ window._PANDEN = []; }
+}
+function zoekPand(){
+  const q = document.getElementById('i_pandzoek').value.trim().toLowerCase();
+  const box = document.getElementById('i_pand_res');
+  if(q.length < 2){ box.innerHTML=''; box.style.display='none'; return; }
+  const lijst = (window._PANDEN||[]).filter(p =>
+    (p.adres+' '+p.plaats+' '+p.postcode).toLowerCase().includes(q)
+  ).slice(0,12);
+  box.style.display='block';
+  if(!lijst.length){ box.innerHTML = '<div class="zoek-item muted">Geen object gevonden</div>'; return; }
+  window._PANDRES = {};
+  box.innerHTML = lijst.map((p,i) => {
+    window._PANDRES[i] = p;
+    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats].filter(Boolean).join(' · ')+'</span></div>';
+  }).join('');
+}
+function kiesPandUit(i){
+  const p = (window._PANDRES||{})[i]; if(!p) return;
+  document.getElementById('i_obj').value = p.adres + (p.plaats ? ' te ' + p.plaats : '');
+  document.getElementById('i_rwid').value = p.rwid || '';
+  document.getElementById('i_plaats').value = p.plaats || '';
+  document.getElementById('i_pc').value = p.postcode || '';
+  document.getElementById('i_pandzoek').value = p.adres;
+  const box = document.getElementById('i_pand_res'); box.innerHTML=''; box.style.display='none';
+  render();
+}
+
+// ===== DOSSIERS (laden uit OTD-database via brug-function) =====
+const STATUS = {
+  concept:    { cls:'concept',    chip:'chip-concept',    label:'Concept' },
+  aangeboden: { cls:'aangeboden', chip:'chip-aangeboden', label:'Aangeboden' },
+  ondertekend:{ cls:'getekend',   chip:'chip-getekend',   label:'Ondertekend' },
+  geannuleerd:{ cls:'',           chip:'chip-concept',    label:'Geannuleerd' }
+};
+function courtageTekst(d){
+  if(d.courtage_type==='percentage' && d.courtage_pct_incl!=null)
+    return String(d.courtage_pct_incl).replace('.',',')+'%';
+  if(d.courtage_vast_bedrag!=null)
+    return '€ '+Number(d.courtage_vast_bedrag).toLocaleString('nl-NL');
+  return '—';
+}
+async function laadDossiers(){
+  const lijst = document.getElementById('dossier-lijst');
+  lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Dossiers laden…</div>';
+  try {
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-dossiers', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const json = await res.json();
+    if(res.status === 401){ sessieVerlopen(); return; }
+    if(!res.ok) throw new Error(json.error || ('HTTP '+res.status));
+    renderDossiers(json);
+  } catch(e){
+    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rood)">Kon dossiers niet laden: '+(e.message||e)+'</div>';
+  }
+}
+let ALLE_DOSSIERS = [];
+function renderDossiers(json){
+  ALLE_DOSSIERS = (json.dossiers || []).filter(function(d){ return (d.documenttype||'verkoop')==='verkoop'; });
+  document.getElementById('overzicht-titel').textContent =
+    (json.rol === 'directie') ? 'Alle opdrachten' : 'Mijn opdrachten';
+  const zoek = document.getElementById('dossier-zoek'); if(zoek) zoek.value='';
+  const tog = document.getElementById('toon-archief'); if(tog) tog.checked=false;
+  verversStatsEnLijst();
+}
+function verversStatsEnLijst(){
+  const actief = ALLE_DOSSIERS.filter(d => !d.gearchiveerd);
+  document.getElementById('hdr-badge').textContent =
+    actief.length + ' dossier' + (actief.length===1?'':'s');
+  const tel = { concept:0, aangeboden:0, ondertekend:0 };
+  actief.forEach(d => { if(tel[d.status]!=null) tel[d.status]++; });
+  document.getElementById('stat-concept').textContent = tel.concept;
+  document.getElementById('stat-aangeboden').textContent = tel.aangeboden;
+  document.getElementById('stat-ondertekend').textContent = tel.ondertekend;
+  filterDossiers();
+}
+function filterDossiers(){
+  const q = (document.getElementById('dossier-zoek').value||'').toLowerCase().trim();
+  const tog = document.getElementById('toon-archief');
+  const toonArch = tog && tog.checked;
+  let lijst = toonArch ? ALLE_DOSSIERS : ALLE_DOSSIERS.filter(d => !d.gearchiveerd);
+  if(q) lijst = lijst.filter(d =>
+    ((d.object_adres||'')+' '+(d.object_plaats||'')+' '+(d.opdrachtgever||'')).toLowerCase().includes(q));
+  tekenDossierKaarten(lijst);
+}
+function tekenDossierKaarten(dossiers){
+  const lijst = document.getElementById('dossier-lijst');
+  if(!ALLE_DOSSIERS.length){
+    lijst.innerHTML = '<div style="padding:28px;text-align:center;color:var(--grijs-tekst)">Nog geen opdrachten. Maak je eerste OTD met de knop hierboven.</div>';
+    return;
+  }
+  if(!dossiers.length){
+    lijst.innerHTML = '<div style="padding:24px;text-align:center;color:var(--grijs-tekst)">Geen opdrachten gevonden.</div>';
+    return;
+  }
+  lijst.innerHTML = dossiers.map(d => {
+    const s = STATUS[d.status] || STATUS.concept;
+    const adres = [d.object_adres, d.object_plaats].filter(Boolean).join(', ') || 'Onbekend object';
+    const datum = d.datum_opdracht ? d.datum_opdracht.split('-').reverse().join('-') : '';
+    const sub = [d.opdrachtgever || 'Nog geen opdrachtgever', d.documenttype, datum].filter(Boolean).join(' · ');
+    const aanbiedKnop = (d.status==='concept' && !d.gearchiveerd)
+      ? `<button class="kaart-knop" onclick="event.stopPropagation();vraagAanbieden(()=>biedAan('${d.id}'))">Aanbieden aan klant ›</button>`
+      : '';
+    const archKnop = `<button class="kaart-knop ghost" onclick="event.stopPropagation();zetArchief('${d.id}',${!d.gearchiveerd})">${d.gearchiveerd?'Terugzetten':'Archiveren'}</button>`;
+    const archChip = d.gearchiveerd ? '<span class="chip arch">Gearchiveerd</span>' : '';
+    return `<div class="otd-card ${s.cls}${d.gearchiveerd?' gearchiveerd':''}" onclick="openBouwer('${d.id}')">
+      <div><div class="adres">${adres}</div><div class="sub">${sub}</div></div>
+      <div class="right"><div class="bedrag">${courtageTekst(d)}</div><span class="chip ${s.chip}">${s.label}</span>${archChip}${aanbiedKnop}${archKnop}</div>
+    </div>`;
+  }).join('');
+}
+async function zetArchief(id, archief){
+  try{
+    const token = await geldigeToken(); if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-archiveren',{
+      method:'POST',
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ dossier_id:id, gearchiveerd:archief })
+    });
+    if(res.status===401){ sessieVerlopen(); return; }
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error || ('HTTP '+res.status));
+    const d = ALLE_DOSSIERS.find(x=>x.id===id); if(d) d.gearchiveerd = archief;
+    verversStatsEnLijst();
+  }catch(e){ alert('Archiveren mislukt: '+(e.message||e)); }
+}
+
+
+async function biedAan(dossierId){
+  try{
+    const token = await geldigeToken();
+    if(!token){ sessieVerlopen(); return; }
+    const res = await fetch('/.netlify/functions/otd-aanbieden',{
+      method:'POST',
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ dossier_id: dossierId })
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'fout');
+    // Geen pop-up meer na aanbieden — de statuswijziging naar "Aangeboden" in de lijst is de bevestiging.
+    laadDossiers();
+  }catch(e){ alert('Aanbieden mislukt: '+(e.message||e)); }
+}
+function kopieerLink(){
+  const inp = document.getElementById('link-veld');
+  inp.select();
+  const klaar = ()=>{ const b=document.getElementById('kopknop'); const o=b.textContent; b.textContent='Gekopieerd ✓'; setTimeout(()=>b.textContent=o,1500); };
+  if(navigator.clipboard){ navigator.clipboard.writeText(inp.value).then(klaar).catch(()=>{ try{document.execCommand('copy');klaar();}catch(e){} }); }
+  else { try{document.execCommand('copy');klaar();}catch(e){} }
+}
+function sluitLinkModal(){ document.getElementById('link-modal').style.display='none'; }
+
+let _confirmActie = null;
+function bevestig(titel, tekst, jaLabel, opJa){
+  document.getElementById('confirm-titel').textContent = titel;
+  document.getElementById('confirm-tekst').textContent = tekst;
+  document.getElementById('confirm-ja').textContent = jaLabel || 'Ja';
+  _confirmActie = opJa;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+function confirmJa(){ document.getElementById('confirm-modal').style.display='none'; const a=_confirmActie; _confirmActie=null; if(a) a(); }
+function confirmNee(){ document.getElementById('confirm-modal').style.display='none'; _confirmActie=null; }
+function vraagAanbieden(actie){
+  bevestig('Opdracht aanbieden aan de klant?',
+    'Je staat op het punt deze opdracht naar de opdrachtgever te sturen. De klant ontvangt de opdracht om digitaal te ondertekenen, en de opdracht verschijnt daarna als "Aangeboden" in het overzicht.',
+    'Ja, aanbieden', actie);
+}
+
+// ===== SESSIE-HELPERS =====
+// Haalt een geldig token op en ververst het als het bijna verloopt.
+// Geeft null terug als er geen bruikbare sessie (meer) is.
+async function geldigeToken(){
+  if(!sb) return null;
+  let { data:{ session } } = await sb.auth.getSession();
+  if(session && session.expires_at && (session.expires_at*1000 - Date.now()) < 60000){
+    try{ const r = await sb.auth.refreshSession(); if(r.data && r.data.session) session = r.data.session; else session = null; }
+    catch(e){ session = null; }
+  }
+  return session ? session.access_token : null;
+}
+function sessieVerlopen(){
+  HUIDIGE_GEBRUIKER = null;
+  document.body.classList.remove('ingelogd');
+  const ov = document.getElementById('overzicht'); if(ov) ov.classList.remove('actief');
+  const bw = document.getElementById('bouwer'); if(bw) bw.classList.remove('actief');
+  const f = document.getElementById('login-fout');
+  if(f) f.textContent = 'Je sessie is verlopen. Log opnieuw in.';
+}
+
+// ===== AUTH-LAAG (schakelbaar) =====
+// Identiteit komt uit het centrale Leadpool-project. Deze laag is bewust
+// geïsoleerd: omschakelen naar portal cross-app SSO is later één wijziging hier.
+const AUTH_CONFIG = {
+  url: 'https://olfcrzusdkijxroxvsgm.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sZmNyenVzZGtpanhyb3h2c2dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDEyOTQsImV4cCI6MjA5MzQ3NzI5NH0.wPygjZCIxzTTOVc2uafMtnESB0iYkxR3yF-AuiL63zc'  // Leadpool-project (olfcrzusdkijxroxvsgm) anon/public key
+};
+let sb = null;
+let HUIDIGE_GEBRUIKER = null;
+
+const AUTH = {
+  async init(){
+    sb = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.anonKey);
+    let { data:{ session } } = await sb.auth.getSession();
+    if(session && session.expires_at && (session.expires_at*1000 - Date.now()) < 60000){
+      try{ const r = await sb.auth.refreshSession(); session = (r.data && r.data.session) ? r.data.session : null; }
+      catch(e){ session = null; }
+    }
+    if (session) await AUTH._naLogin(session);
+  },
+  async login(){
+    const email = document.getElementById('login-email').value.trim();
+    const pw    = document.getElementById('login-pw').value;
+    const knop  = document.querySelector('.btn-login');
+    const fout  = document.getElementById('login-fout');
+    fout.textContent = '';
+    if(!email || !pw){ fout.textContent = 'Vul e-mail en wachtwoord in.'; return; }
+    knop.disabled = true; knop.textContent = 'Bezig…';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    knop.disabled = false; knop.textContent = 'Inloggen';
+    if (error){ fout.textContent = 'Inloggen mislukt: ' + error.message; return; }
+    await AUTH._naLogin(data.session);
+  },
+  async _naLogin(session){
+    const email = session.user.email;
+    // Profiel uit Leadpool (RLS: authenticated mag gebruikers lezen)
+    let gebr = null;
+    try {
+      const { data } = await sb.from('gebruikers')
+        .select('naam,rol,kantoor_id,email').eq('email', email).maybeSingle();
+      gebr = data;
+    } catch(e){ /* niet-fataal */ }
+    HUIDIGE_GEBRUIKER = gebr || { naam: email, rol: 'onbekend', email };
+    document.getElementById('hdr-sub').textContent =
+      HUIDIGE_GEBRUIKER.naam + ' · ' + HUIDIGE_GEBRUIKER.rol;
+    document.body.classList.add('ingelogd');
+    document.getElementById('overzicht').classList.add('actief');
+    render();
+    laadDossiers();
+  },
+  async logout(){
+    if (sb) await sb.auth.signOut();
+    document.body.classList.remove('ingelogd');
+    location.reload();
+  }
+};
+
+AUTH.init();
+</script>
+</body>
+</html>
