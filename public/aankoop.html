@@ -473,6 +473,9 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
           <div class="toggle aan" id="tg_beeind" onclick="togBeeind()"><span class="dot">✓</span>Alleen daadwerkelijk gemaakte kosten (conform VBO-voorwaarden)</div>
           <p class="sec-p">Bij voortijdige beëindiging worden geen beëindigingskosten in rekening gebracht, behoudens de daadwerkelijk gemaakte kosten (taxaties, bouwkundige keuring e.d.). Aan = deze gunstige clausule in de overeenkomst; uit = standaard regime.</p>
         </div>
+        <div class="fg"><label>Opmerkingen / afwijkende afspraken</label>
+          <textarea id="i_opm" rows="3" placeholder="Bijzondere of afwijkende afspraken over courtage, kosten of dienstverlening — deze komen in de overeenkomst." oninput="render()" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #d9dee8;border-radius:12px;font:inherit;color:inherit;resize:vertical"></textarea>
+        </div>
       </div>
 
       <!-- stap 2 -->
@@ -920,6 +923,7 @@ function render(){
     <div class="pv-court">${court}</div>
     <div class="kv"><span class="k">Opstartkosten</span><span>${state.opstart===false?'niet van toepassing':('van toepassing · '+(v('i_term')||'—'))}</span></div>
     <div class="kv"><span class="k">Beëindigingskosten</span><span>${state.beeind===false?'standaard regime':'alleen daadwerkelijk gemaakte kosten'}</span></div>
+    ${v('i_opm').trim()?`<div class="kv"><span class="k">Opmerkingen</span><span>${v('i_opm')}</span></div>`:''}
     ${_isAankoop ? '' : '<h4>Afspraken</h4>'+vinkjes}
     ${promotieBlok}`;
   document.getElementById('prod-totaal').textContent=euro(prodTotaal());
@@ -945,6 +949,7 @@ function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 function wisFormulier(){
   ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
    'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel',
+   'i_opm',
    'z_minprijs','z_maxprijs','z_type','z_soort_anders','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
@@ -1037,6 +1042,7 @@ async function laadDossierInBouwer(id){
   if(d.hypotheek_gecheckt===false && d.hypotheekshop_doorsturen===true && !state.hypDoor) togHypDoor();
   kiesOpstart(d.opstartkosten_van_toepassing===false ? false : true);
   if(d.opstartkosten_termijn){ const t=document.getElementById('i_term'); if(t) t.value=d.opstartkosten_termijn; }
+  set('i_opm', d.bijzonderheden);
   state.beeind = (d.geen_beeindigingskosten===false)?false:true;
   const _tb2=document.getElementById('tg_beeind'); if(_tb2) _tb2.classList.toggle('aan', state.beeind);
   kiesDoctype(d.documenttype==='aankoop'?'aankoop':'verkoop');
@@ -1153,6 +1159,7 @@ function _verzamelPayload(){
     opstartkosten_van_toepassing: (state.opstart===false) ? false : true,
     opstartkosten_termijn: (state.opstart===false) ? null : (v('i_term') || null),
     geen_beeindigingskosten: (state.beeind===false) ? false : true,
+    bijzonderheden: v('i_opm') || null,
     datum_opdracht: vandaag,
     cloze_id: v('i_cloze') || null,
     herkomst: v('i_herkomst') || null,
