@@ -77,8 +77,8 @@ exports.handler = async (event) => {
         const obj = d.object_adres || (isAankoop ? 'uw aankoopopdracht' : 'uw woning');
         const onderwerpDeel = isAankoop ? (d.object_adres || 'aankoopbegeleiding') : obj;
         const introTekst = isAankoop
-          ? ('U heeft ons gevraagd u te begeleiden bij de aankoop van ' + (d.object_adres ? ('<strong>' + d.object_adres + '</strong>') : 'een woning') + '. De opdracht tot dienstverlening hebben wij voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.')
-          : ('Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.');
+          ? ('Dank voor het goede gesprek over ' + (d.object_adres ? ('de aankoop van <strong>' + d.object_adres + '</strong>') : 'uw woningzoektocht') + '. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.')
+          : ('Dank voor het goede gesprek over de verkoop van <strong>' + obj + '</strong>. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.');
         const makNaam = (mak && (mak.naam || mak.entiteit_naam)) || 'uw makelaar';
         const makEmail = (mak && mak.email) || 'amsterdam@makelaarsvan.nl';
         const tweetalig = (d.taal === 'nl_en');
