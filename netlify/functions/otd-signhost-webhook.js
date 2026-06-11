@@ -8,7 +8,48 @@ const SIGNHOST_API_KEY = (process.env.SIGNHOST_API_KEY || '').trim();
 const SIGNHOST_APP_KEY = (process.env.SIGNHOST_APP_KEY || '').trim();
 const SIGNHOST_BASE = 'https://api.signhost.com/api';
 const RESEND_API_KEY = process.env.RESEND_API_KEY_OTD || process.env.RESEND_API_KEY;
+const LEADPOOL_URL = 'https://olfcrzusdkijxroxvsgm.supabase.co';
+const LEADPOOL_SERVICE_KEY = process.env.LEADPOOL_SERVICE_KEY;
 const ok = (obj) => ({ statusCode:200, headers:{'Content-Type':'application/json'}, body:JSON.stringify(obj||{ok:true}) });
+
+// Na ondertekening: WWFT-zaak registreren in het centrale project (start klantonderzoek
+// + basis voor doorbelasting Move-checks per makelaar). Idempotent via unieke index op
+// otd_dossier_id; fouten mogen de webhook-ack nooit blokkeren.
+async function maakWwftZaak(d, otdH){
+  if(!LEADPOOL_SERVICE_KEY) return; // env ontbreekt: stilletjes overslaan
+  const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
+  const ogArr = ogRes.ok ? await ogRes.json() : [];
+  let mak = null;
+  if(d.makelaar_id){
+    const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=naam,email&id=eq.'+d.makelaar_id,{headers:otdH});
+    const mArr = mRes.ok ? await mRes.json() : [];
+    mak = mArr[0] || null;
+  }
+  const zaak = {
+    bron: 'otd',
+    otd_dossier_id: String(d.id),
+    object_adres: d.object_adres || null,
+    documenttype: d.documenttype || null,
+    makelaar_email: (mak && mak.email) || null,
+    makelaar_naam: (mak && mak.naam) || null,
+    opdrachtgevers: ogArr.map(o => ({
+      naam: [o.voornamen, o.tussenvoegsels, o.achternaam].filter(Boolean).join(' '),
+      email: o.email || null
+    })),
+    aantal_personen: Math.max(ogArr.length, 1),
+    ondertekend_op: new Date().toISOString()
+  };
+  await fetch(LEADPOOL_URL+'/rest/v1/wwft_zaken', {
+    method:'POST',
+    headers: {
+      apikey: LEADPOOL_SERVICE_KEY,
+      Authorization: 'Bearer '+LEADPOOL_SERVICE_KEY,
+      'Content-Type':'application/json',
+      Prefer:'resolution=ignore-duplicates,return=minimal' // idempotent: bestaande zaak blijft staan
+    },
+    body: JSON.stringify(zaak)
+  });
+}
 
 // Na ondertekening: getekende OTD + voorwaarden (+ ondertekenbewijs) naar de klant,
 // en een kopie naar de makelaar. Mailfouten mogen de webhook-ack nooit blokkeren.
@@ -124,6 +165,8 @@ exports.handler = async (event) => {
       // 2) getekende OTD + voorwaarden naar klant + kopie makelaar
       const host = (event.headers && event.headers.host) || 'otd-mva.netlify.app';
       try { await verstuurGetekend(trxId, d, otdH, host); } catch(e){ /* mailfout blokkeert de ack niet */ }
+      // 3) WWFT-zaak registreren in het centrale project (start klantonderzoek + doorbelasting)
+      try { await maakWwftZaak(d, otdH); } catch(e){ /* wwft-fout blokkeert de ack niet */ }
       return ok({ updated:'ondertekend', dossier:d.id });
     }
 
