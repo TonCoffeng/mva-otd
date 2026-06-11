@@ -46,7 +46,10 @@ async function verstuurGetekend(trxId, d, otdH, host){
     }catch(e){}
   }
 
-  const obj = d.object_adres || 'uw woning';
+  const isAankoop = (d.documenttype === 'aankoop');
+  const obj = d.object_adres || (isAankoop ? 'uw aankoopopdracht' : 'uw woning');
+  const omschrijving = isAankoop ? ('uw aankoopbegeleiding' + (d.object_adres ? (' (' + d.object_adres + ')') : '')) : obj;
+  const tipsPad = isAankoop ? '/na-ondertekening-aankoop.html' : '/na-ondertekening.html';
   const docsBase = 'https://'+host+'/docs/';
   const att = [];
   if(signedB64) att.push({ filename:'Opdracht-tot-dienstverlening-getekend.pdf', content: signedB64 });
@@ -60,13 +63,13 @@ async function verstuurGetekend(trxId, d, otdH, host){
       '<div style="background:#16243f;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f"><strong style="font-size:15px;letter-spacing:1px">MAKELAARSVAN AMSTERDAM</strong></div>' +
       '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:26px 24px;background:#fffdfa">' +
         '<p style="margin:0 0 14px">'+aanhef+',</p>' +
-        '<p style="margin:0 0 14px">Bedankt! De opdracht tot dienstverlening voor <strong>'+obj+'</strong> is ondertekend. In de bijlage vindt u het <strong>getekende exemplaar</strong> en de bijbehorende <strong>algemene voorwaarden</strong>'+(receiptB64?', plus het ondertekenbewijs':'')+'.</p>' +
-        '<p style="margin:0 0 14px">Wij gaan nu voor u aan de slag. Wat er de komende periode op u afkomt, leest u <a href="https://'+host+'/na-ondertekening.html" style="color:#df5a0f;font-weight:bold">op deze pagina &rsaquo;</a></p>' +
+        '<p style="margin:0 0 14px">Bedankt! De opdracht tot dienstverlening voor <strong>'+omschrijving+'</strong> is ondertekend. In de bijlage vindt u het <strong>getekende exemplaar</strong> en de bijbehorende <strong>algemene voorwaarden</strong>'+(receiptB64?', plus het ondertekenbewijs':'')+'.</p>' +
+        '<p style="margin:0 0 14px">Wij gaan nu voor u aan de slag. Wat er de komende periode op u afkomt, leest u <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">op deze pagina &rsaquo;</a></p>' +
         '<p style="margin:0">Met vriendelijke groet,<br><strong>'+makNaam+'</strong><br><span style="color:#6c7689;font-size:13px">'+(makEmail||'amsterdam@makelaarsvan.nl')+' &middot; +31 (0)20 333 11 10</span></p>' +
       '</div>' +
       '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
     '</div>';
-  const klantPayload = { from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to: ontvangers, subject:'Uw getekende opdracht tot dienstverlening — '+obj, html: klantHtml, attachments: att };
+  const klantPayload = { from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to: ontvangers, subject:'Uw getekende opdracht tot dienstverlening — '+(isAankoop ? (d.object_adres || 'aankoopbegeleiding') : obj), html: klantHtml, attachments: att };
   if(makEmail) klantPayload.reply_to = makEmail;
   await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(klantPayload) });
 
@@ -80,11 +83,11 @@ async function verstuurGetekend(trxId, d, otdH, host){
       '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
         '<div style="background:#16243f;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f"><strong style="font-size:14px;letter-spacing:1px">MVA — getekende OTD</strong></div>' +
         '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:22px;background:#fffdfa">' +
-          '<p style="margin:0 0 12px">De opdracht voor <strong>'+obj+'</strong> is ondertekend door <strong>'+klantNaam+'</strong>.</p>' +
+          '<p style="margin:0 0 12px">De opdracht voor <strong>'+omschrijving+'</strong> is ondertekend door <strong>'+klantNaam+'</strong>.</p>' +
           '<p style="margin:0 0 12px">Het getekende exemplaar zit in de bijlage, ter archivering.</p>' +
           '<p style="margin:0;color:#6c7689;font-size:13px">Makelaar: '+makNaam+' ('+makEmail+')</p>' +
         '</div></div>';
-    await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to:[makEmail], subject:'Getekende OTD — '+obj, html: makHtml, attachments: makAtt }) });
+    await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to:[makEmail], subject:'Getekende OTD — '+(isAankoop ? ('aankoop ' + (d.object_adres || '')).trim() : obj), html: makHtml, attachments: makAtt }) });
   }
 }
 
@@ -105,7 +108,7 @@ exports.handler = async (event) => {
     const otdH = { apikey:OTD_SERVICE_KEY, Authorization:'Bearer '+OTD_SERVICE_KEY };
 
     // dossier zoeken op de opgeslagen transactie-id (alleen bekende dossiers worden geraakt)
-    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,makelaar_id,klant_token,taal&signhost_transaction_id=eq.'+encodeURIComponent(trxId)+'&limit=1',{headers:otdH});
+    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,makelaar_id,klant_token,taal,documenttype&signhost_transaction_id=eq.'+encodeURIComponent(trxId)+'&limit=1',{headers:otdH});
     const dArr = dRes.ok ? await dRes.json() : [];
     const d = dArr[0];
     if(!d) return ok({ ignored:'onbekende transactie' });

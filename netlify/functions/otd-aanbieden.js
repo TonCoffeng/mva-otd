@@ -35,7 +35,7 @@ exports.handler = async (event) => {
     if(!dossierId) return json(400,{error:'Geen dossier opgegeven.'});
 
     // dossier ophalen
-    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,makelaar_id,status,klant_token,object_adres,taal&id=eq.'+encodeURIComponent(dossierId)+'&limit=1',{headers:otdH});
+    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,makelaar_id,status,klant_token,object_adres,taal,documenttype&id=eq.'+encodeURIComponent(dossierId)+'&limit=1',{headers:otdH});
     const dArr = dRes.ok ? await dRes.json() : [];
     const d = dArr[0];
     if(!d) return json(404,{error:'Opdracht niet gevonden.'});
@@ -73,11 +73,16 @@ exports.handler = async (event) => {
       if(og && og.email){
         mailTo = og.email;
         const aanhef = og.voornamen ? ('Beste ' + og.voornamen) : 'Beste heer/mevrouw';
-        const obj = d.object_adres || 'uw woning';
+        const isAankoop = (d.documenttype === 'aankoop');
+        const obj = d.object_adres || (isAankoop ? 'uw aankoopopdracht' : 'uw woning');
+        const onderwerpDeel = isAankoop ? (d.object_adres || 'aankoopbegeleiding') : obj;
+        const introTekst = isAankoop
+          ? ('U heeft ons gevraagd u te begeleiden bij de aankoop van ' + (d.object_adres ? ('<strong>' + d.object_adres + '</strong>') : 'een woning') + '. De opdracht tot dienstverlening hebben wij voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.')
+          : ('Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.');
         const makNaam = (mak && (mak.naam || mak.entiteit_naam)) || 'uw makelaar';
         const makEmail = (mak && mak.email) || 'amsterdam@makelaarsvan.nl';
         const tweetalig = (d.taal === 'nl_en');
-        const tipsLink = 'https://' + host + '/na-ondertekening.html';
+        const tipsLink = 'https://' + host + (isAankoop ? '/na-ondertekening-aankoop.html' : '/na-ondertekening.html');
         const docsBase = 'https://' + host + '/docs/';
         const html =
           '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
@@ -85,7 +90,7 @@ exports.handler = async (event) => {
               '<strong style="font-size:15px;letter-spacing:1px">MAKELAARSVAN AMSTERDAM</strong></div>' +
             '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:26px 24px;background:#fffdfa">' +
               '<p style="margin:0 0 14px">' + aanhef + ',</p>' +
-              '<p style="margin:0 0 14px">Voor <strong>' + obj + '</strong> hebben wij de opdracht tot dienstverlening voor u klaargezet. U kunt deze rustig doorlezen en daarna online uw akkoord geven of een opmerking plaatsen.</p>' +
+              '<p style="margin:0 0 14px">' + introTekst + '</p>' +
               '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#df5a0f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block">Opdracht bekijken &amp; ondertekenen</a></p>' +
               '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">Werkt de knop niet? Open dan deze link: <a href="' + link + '" style="color:#df5a0f">' + link + '</a></p>' +
               '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 18px">' +
@@ -100,16 +105,18 @@ exports.handler = async (event) => {
             '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
           '</div>';
         const attachments = [
-          { filename: 'Algemene-Consumentenvoorwaarden-Makelaardij.pdf', path: docsBase + 'vbo-algemene-consumenten-voorwaarden-juli-2023-19534.pdf' },
-          { filename: 'Uw-eigen-unieke-woningwebsite.pdf', path: docsBase + 'Uw_eigen_unieke_woning_website.pdf' }
+          { filename: 'Algemene-Consumentenvoorwaarden-Makelaardij.pdf', path: docsBase + 'vbo-algemene-consumenten-voorwaarden-juli-2023-19534.pdf' }
         ];
+        if(!isAankoop){
+          attachments.push({ filename: 'Uw-eigen-unieke-woningwebsite.pdf', path: docsBase + 'Uw_eigen_unieke_woning_website.pdf' });
+        }
         if(tweetalig){
           attachments.push({ filename: 'General-Terms-and-Conditions-for-Consumers.pdf', path: docsBase + 'General_terms_and_conditions_and_regulations_for_consumers.pdf' });
         }
         const payload = {
           from: 'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>',
           to: [og.email],
-          subject: 'Uw opdracht tot dienstverlening — ' + obj,
+          subject: 'Uw opdracht tot dienstverlening — ' + onderwerpDeel,
           html: html,
           attachments: attachments
         };
