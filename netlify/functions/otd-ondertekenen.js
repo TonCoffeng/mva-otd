@@ -52,15 +52,30 @@ exports.handler = async (event) => {
 
     // 3. Signhost-transactie aanmaken
     // Volgorde: eerst alle opdrachtgevers, daarna de makelaar (medeondertekenaar).
-    const signerEmails = ondertekenaars.map(o=>o.email);
-    if(makelaarEmail) signerEmails.push(makelaarEmail);
+    // dossier-taal en namen voor persoonlijke Signhost-berichten
+    const taalRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=taal,documenttype&id=eq.'+d.id+'&limit=1',{headers:otdH});
+    const taalArr = taalRes.ok ? await taalRes.json() : [];
+    const eng = !!(taalArr[0] && taalArr[0].taal === 'nl_en');
+    const naamVan = (o) => [o.voornamen, o.tussenvoegsels, o.achternaam].filter(Boolean).join(' ');
+    const eersteNaam = naamVan(ondertekenaars[0]) || ondertekenaars[0].email;
+    const signers = ondertekenaars.map((o, i) => ({
+      email: o.email,
+      // 1e tekent via de klant-link (geen Signhost-mail); volgende(n) krijgen een persoonlijk bericht
+      bericht: eng
+        ? (eersteNaam + ' has signed the service agreement for ' + (d.object_adres || 'your engagement') + '. You are next — please review and sign.')
+        : (eersteNaam + ' heeft de opdracht tot dienstverlening voor ' + (d.object_adres || 'uw opdracht') + ' ondertekend. Nu bent u aan de beurt — leest u het document na en onderteken het.'),
+      sendRequest: i > 0
+    }));
+    // makelaar tekent als laatste; Signhost mailt hem NIET — onze webhook stuurt een
+    // persoonlijke MVA-mail zodra alle opdrachtgevers getekend hebben
+    if(makelaarEmail) signers.push({ email: makelaarEmail, bericht: 'Opdracht tot dienstverlening', sendRequest: false });
     const postbackUrl = 'https://'+host+'/.netlify/functions/otd-signhost-webhook';
     const createBody = {
-      Signers: signerEmails.map((email,i)=>({
-        Email: email,
-        SendSignRequest: i>0,             // 1e opdrachtgever tekent via de klant-link; de rest (incl. makelaar) krijgt op zijn beurt een Signhost-uitnodiging
-        SignRequestMessage: 'Opdracht tot dienstverlening',
-        Language: 'nl-NL',
+      Signers: signers.map((sg,i)=>({
+        Email: sg.email,
+        SendSignRequest: sg.sendRequest,
+        SignRequestMessage: sg.bericht,
+        Language: (eng && i < ondertekenaars.length) ? 'en-US' : 'nl-NL',
         SignOrder: i+1,
         Verifications: [{ Type: 'Scribble', RequireHandsignature: true }]
       })),

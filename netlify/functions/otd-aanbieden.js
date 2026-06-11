@@ -56,7 +56,7 @@ exports.handler = async (event) => {
 
     // klant-link opbouwen
     const host = event.headers.host || 'otd-mva.netlify.app';
-    const link = 'https://' + host + '/klant.html?t=' + token;
+    const link = 'https://' + host + '/klant?t=' + token;
 
     // e-mail naar de opdrachtgever (alleen als sleutel + adres aanwezig)
     let mailed = false, mailTo = null;
@@ -93,7 +93,7 @@ exports.handler = async (event) => {
         const docsBase = 'https://' + host + '/docs/';
         const T = eng ? {
           knop: 'View &amp; sign the agreement',
-          fallback: 'Button not working? Use this link instead:',
+          fallback: 'Button not working? <a href="' + link + '" style="color:#df5a0f">Open the agreement via this link</a>.',
           wwftKop: 'Identification (Wwft)',
           wwft: 'As real estate agents we are legally required to verify the identity of our clients. At the start of our engagement we will ask you to identify yourself with a valid ID document &mdash; we will let you know how and when this is most convenient.',
           tips: 'Curious what happens after signing? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Read what to expect &rsaquo;</a>',
@@ -101,7 +101,7 @@ exports.handler = async (event) => {
           groet: 'Kind regards,'
         } : {
           knop: 'Opdracht bekijken &amp; ondertekenen',
-          fallback: 'Werkt de knop niet? Open dan deze link:',
+          fallback: 'Werkt de knop niet? <a href="' + link + '" style="color:#df5a0f">Open de opdracht via deze link</a>.',
           wwftKop: 'Identificatie (Wwft)',
           wwft: 'Als makelaar zijn wij wettelijk verplicht onze opdrachtgevers te identificeren. Bij de start vragen wij u zich te legitimeren met een geldig identiteitsbewijs &mdash; wij laten u weten hoe en wanneer dit het makkelijkst kan.',
           tips: 'Benieuwd wat er na ondertekening gebeurt? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Lees hier wat er op u afkomt &rsaquo;</a>',
@@ -116,7 +116,7 @@ exports.handler = async (event) => {
               '<p style="margin:0 0 14px">' + aanhef + ',</p>' +
               '<p style="margin:0 0 14px">' + introTekst + '</p>' +
               '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#df5a0f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block">' + T.knop + '</a></p>' +
-              '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">' + T.fallback + ' <a href="' + link + '" style="color:#df5a0f">' + link + '</a></p>' +
+              '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">' + T.fallback + '</p>' +
               '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 18px">' +
                 '<strong style="color:#df5a0f">' + T.wwftKop + '</strong><br>' + T.wwft +
               '</div>' +

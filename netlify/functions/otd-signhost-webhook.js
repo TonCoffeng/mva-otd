@@ -39,21 +39,24 @@ async function maakWwftZaak(d, otdH){
     aantal_personen: Math.max(ogArr.length, 1),
     ondertekend_op: new Date().toISOString()
   };
-  await fetch(LEADPOOL_URL+'/rest/v1/wwft_zaken', {
+  const ins = await fetch(LEADPOOL_URL+'/rest/v1/wwft_zaken', {
     method:'POST',
     headers: {
       apikey: LEADPOOL_SERVICE_KEY,
       Authorization: 'Bearer '+LEADPOOL_SERVICE_KEY,
       'Content-Type':'application/json',
-      Prefer:'resolution=ignore-duplicates,return=minimal' // idempotent: bestaande zaak blijft staan
+      Prefer:'resolution=ignore-duplicates,return=representation' // idempotent: bestaande zaak blijft staan
     },
     body: JSON.stringify(zaak)
   });
+  if(!ins.ok) return null;
+  const rows = await ins.json().catch(()=>[]);
+  return (rows && rows[0]) || null; // null bij duplicate (zaak bestond al → geen tweede actiemail)
 }
 
 // Na ondertekening: getekende OTD + voorwaarden (+ ondertekenbewijs) naar de klant,
 // en een kopie naar de makelaar. Mailfouten mogen de webhook-ack nooit blokkeren.
-async function verstuurGetekend(trxId, d, otdH, host){
+async function verstuurGetekend(trxId, d, otdH, host, wwftZaak){
   if(!RESEND_API_KEY) return;
   const shH = { Authorization:'APIKey '+SIGNHOST_API_KEY, Application:'APPKey '+SIGNHOST_APP_KEY };
 
@@ -108,10 +111,16 @@ async function verstuurGetekend(trxId, d, otdH, host){
   const T = eng ? {
     body1: 'Thank you! The service agreement (opdracht tot dienstverlening) for <strong>'+omschrijvingMail+'</strong> has been signed. Attached you will find the <strong>signed copy</strong> and the accompanying <strong>general terms and conditions</strong>'+(receiptB64?', as well as the signing receipt':'')+'.',
     body2: 'We will now get to work for you. What to expect in the coming period: <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">read more here &rsaquo;</a>',
+    wwftKop: 'Next step: identification (Wwft)',
+    wwft: 'As real estate agents we are legally required to verify the identity of our clients. The Wwft-check is being prepared for you in your Move.nl file &mdash; you can complete it (using Vidua or an ID upload) as soon as it is ready, usually within one business day.',
+    wwftKnop: 'Go to Move.nl',
     groet: 'Kind regards,'
   } : {
     body1: 'Bedankt! De opdracht tot dienstverlening voor <strong>'+omschrijvingMail+'</strong> is ondertekend. In de bijlage vindt u het <strong>getekende exemplaar</strong> en de bijbehorende <strong>algemene voorwaarden</strong>'+(receiptB64?', plus het ondertekenbewijs':'')+'.',
     body2: 'Wij gaan nu voor u aan de slag. Wat er de komende periode op u afkomt, leest u <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">op deze pagina &rsaquo;</a>',
+    wwftKop: 'Volgende stap: identificatie (Wwft)',
+    wwft: 'Als makelaar zijn wij wettelijk verplicht onze opdrachtgevers te identificeren. De Wwft-check wordt voor u klaargezet in uw Move.nl-dossier &mdash; u kunt hem invullen (met Vidua of een ID-upload) zodra hij klaarstaat, doorgaans binnen &eacute;&eacute;n werkdag.',
+    wwftKnop: 'Ga naar Move.nl',
     groet: 'Met vriendelijke groet,'
   };
   const klantHtml =
@@ -121,6 +130,10 @@ async function verstuurGetekend(trxId, d, otdH, host){
         '<p style="margin:0 0 14px">'+aanhef+',</p>' +
         '<p style="margin:0 0 14px">'+T.body1+'</p>' +
         '<p style="margin:0 0 14px">'+T.body2+'</p>' +
+        '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 18px">' +
+          '<strong style="color:#df5a0f">'+T.wwftKop+'</strong><br>'+T.wwft+
+          '<p style="text-align:center;margin:14px 0 2px"><a href="https://move.nl" style="background:#df5a0f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-weight:bold;display:inline-block">'+T.wwftKnop+'</a></p>' +
+        '</div>' +
         '<p style="margin:0">'+T.groet+'<br><strong>'+makNaam+'</strong><br><span style="color:#6c7689;font-size:13px">'+(makEmail||'amsterdam@makelaarsvan.nl')+' &middot; +31 (0)20 333 11 10</span></p>' +
       '</div>' +
       '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
@@ -141,10 +154,78 @@ async function verstuurGetekend(trxId, d, otdH, host){
         '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:22px;background:#fffdfa">' +
           '<p style="margin:0 0 12px">De opdracht voor <strong>'+omschrijving+'</strong> is ondertekend door <strong>'+klantNaam+'</strong>.</p>' +
           '<p style="margin:0 0 12px">Het getekende exemplaar zit in de bijlage, ter archivering.</p>' +
+          (wwftZaak && wwftZaak.actie_token ? (
+            '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 14px">' +
+              '<strong style="color:#df5a0f">Nu: Wwft-check versturen</strong><br>' +
+              'Verstuur de Wwft-check naar de opdrachtgever(s): open in Realworks het object &rarr; relatie &rarr; Move.nl-knop &rarr; <i>Start/Open Wwft Dossier</i> &rarr; <i>Versturen</i>. Of laat Monique het regelen (verwerking binnen 24 uur).' +
+              '<p style="text-align:center;margin:14px 0 4px">' +
+                '<a href="https://crm.realworks.nl" style="background:#16243f;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;display:inline-block;margin:3px">Zelf starten in Realworks</a> ' +
+                '<a href="https://'+host+'/.netlify/functions/otd-wwft-keuze?id='+wwftZaak.id+'&t='+wwftZaak.actie_token+'&keuze=gestart" style="background:#1d7a3f;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;display:inline-block;margin:3px">&#10003; Check verstuurd</a> ' +
+                '<a href="https://'+host+'/.netlify/functions/otd-wwft-keuze?id='+wwftZaak.id+'&t='+wwftZaak.actie_token+'&keuze=monique" style="background:#fff;color:#16243f;border:1.5px solid #16243f;text-decoration:none;padding:9px 18px;border-radius:8px;font-weight:bold;display:inline-block;margin:3px">Laat Monique het regelen</a>' +
+              '</p>' +
+            '</div>'
+          ) : '') +
           '<p style="margin:0;color:#6c7689;font-size:13px">Makelaar: '+makNaam+' ('+makEmail+')</p>' +
         '</div></div>';
     await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to:[makEmail], subject:'Getekende OTD — '+(isAankoop ? ('aankoop ' + (d.object_adres || '')).trim() : obj), html: makHtml, attachments: makAtt }) });
   }
+}
+
+// Zodra alle opdrachtgevers getekend hebben (maar de makelaar nog niet): persoonlijke
+// MVA-mail aan de makelaar met zijn tekenlink. Eenmalig (vlag makelaar_uitgenodigd_op).
+async function nodigMakelaarUit(trxId, d, otdH){
+  if(!RESEND_API_KEY || d.makelaar_uitgenodigd_op) return;
+  const shH = { Authorization:'APIKey '+SIGNHOST_API_KEY, Application:'APPKey '+SIGNHOST_APP_KEY };
+
+  // makelaar ophalen
+  if(!d.makelaar_id) return;
+  const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=naam,email&id=eq.'+d.makelaar_id,{headers:otdH});
+  const mArr = mRes.ok ? await mRes.json() : [];
+  const mak = mArr[0];
+  if(!mak || !mak.email) return;
+  const makEmailLc = mak.email.toLowerCase();
+
+  // transactie ophalen: zijn alle anderen klaar en heeft de makelaar een actieve SignUrl?
+  const gRes = await fetch(SIGNHOST_BASE+'/transaction/'+encodeURIComponent(trxId), { headers: Object.assign({}, shH, { Accept:'application/json' }) });
+  if(!gRes.ok) return;
+  let trx = null; try { trx = JSON.parse(await gRes.text()); } catch(e){ return; }
+  const signers = Array.isArray(trx && trx.Signers) ? trx.Signers : [];
+  const makSigner = signers.find(sg => sg && sg.Email && sg.Email.toLowerCase() === makEmailLc);
+  if(!makSigner || makSigner.SignedDateTime) return; // geen makelaar-signer, of hij heeft al getekend
+  const anderen = signers.filter(sg => sg && sg.Email && sg.Email.toLowerCase() !== makEmailLc);
+  if(!anderen.length || !anderen.every(sg => sg.SignedDateTime)) return; // opdrachtgevers nog niet allemaal klaar
+  if(!makSigner.SignUrl) return;
+
+  // eerste opdrachtgever voor de aanhef
+  const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam&dossier_id=eq.'+d.id+'&order=volgorde.asc',{headers:otdH});
+  const ogArr = ogRes.ok ? await ogRes.json() : [];
+  const klantNamen = ogArr.map(o=>[o.voornamen,o.tussenvoegsels,o.achternaam].filter(Boolean).join(' ')).filter(Boolean).join(' en ') || 'De opdrachtgever';
+  const voornaamMak = (mak.naam||'').split(' ')[0] || mak.naam || 'collega';
+  const isAankoopM = (d.documenttype === 'aankoop');
+  const objM = d.object_adres || (isAankoopM ? 'de aankoopopdracht' : 'de opdracht');
+
+  const html =
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
+      '<div style="background:#16243f;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f"><strong style="font-size:14px;letter-spacing:1px">MVA — jouw handtekening</strong></div>' +
+      '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:24px 22px;background:#fffdfa">' +
+        '<p style="margin:0 0 12px">Hoi '+voornaamMak+',</p>' +
+        '<p style="margin:0 0 12px">Goed nieuws: <b>'+klantNamen+'</b> heeft de opdracht tot dienstverlening voor <b>'+objM+'</b> ondertekend. Als laatste stap zet jij je handtekening &mdash; daarmee is de opdracht rond en gaan de bevestigingen automatisch de deur uit.</p>' +
+        '<p style="text-align:center;margin:22px 0"><a href="'+makSigner.SignUrl+'" style="background:#df5a0f;color:#fff;text-decoration:none;padding:13px 26px;border-radius:10px;font-weight:bold;display:inline-block">Onderteken de opdracht</a></p>' +
+        '<p style="margin:0;color:#6c7689;font-size:13px">Duurt een halve minuut. Daarna ontvangen jij en de klant het getekende exemplaar per mail.</p>' +
+      '</div></div>';
+  await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({
+    from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>',
+    to:[mak.email],
+    subject:'Jouw handtekening — '+objM,
+    html: html
+  }) });
+
+  // vlag zetten: niet nogmaals mailen bij volgende postbacks
+  await fetch(OTD_URL+'/rest/v1/otd_dossiers?id=eq.'+encodeURIComponent(d.id), {
+    method:'PATCH',
+    headers: Object.assign({}, otdH, { 'Content-Type':'application/json', Prefer:'return=minimal' }),
+    body: JSON.stringify({ makelaar_uitgenodigd_op: new Date().toISOString() })
+  });
 }
 
 exports.handler = async (event) => {
@@ -164,7 +245,7 @@ exports.handler = async (event) => {
     const otdH = { apikey:OTD_SERVICE_KEY, Authorization:'Bearer '+OTD_SERVICE_KEY };
 
     // dossier zoeken op de opgeslagen transactie-id (alleen bekende dossiers worden geraakt)
-    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,makelaar_id,klant_token,taal,documenttype&signhost_transaction_id=eq.'+encodeURIComponent(trxId)+'&limit=1',{headers:otdH});
+    const dRes = await fetch(OTD_URL+'/rest/v1/otd_dossiers?select=id,status,object_adres,makelaar_id,klant_token,taal,documenttype,makelaar_uitgenodigd_op&signhost_transaction_id=eq.'+encodeURIComponent(trxId)+'&limit=1',{headers:otdH});
     const dArr = dRes.ok ? await dRes.json() : [];
     const d = dArr[0];
     if(!d) return ok({ ignored:'onbekende transactie' });
@@ -177,14 +258,19 @@ exports.handler = async (event) => {
         headers: Object.assign({}, otdH, { 'Content-Type':'application/json', Prefer:'return=minimal' }),
         body: JSON.stringify({ status:'ondertekend', ondertekend_op: new Date().toISOString() })
       });
-      // 2) getekende OTD + voorwaarden naar klant + kopie makelaar
+      // 2) WWFT-zaak registreren in het centrale project (start klantonderzoek + doorbelasting)
+      let wwftZaak = null;
+      try { wwftZaak = await maakWwftZaak(d, otdH); } catch(e){ /* wwft-fout blokkeert de ack niet */ }
+      // 3) getekende OTD + voorwaarden naar klant + kopie/actiemail makelaar
       const host = (event.headers && event.headers.host) || 'otd-mva.netlify.app';
-      try { await verstuurGetekend(trxId, d, otdH, host); } catch(e){ /* mailfout blokkeert de ack niet */ }
-      // 3) WWFT-zaak registreren in het centrale project (start klantonderzoek + doorbelasting)
-      try { await maakWwftZaak(d, otdH); } catch(e){ /* wwft-fout blokkeert de ack niet */ }
+      try { await verstuurGetekend(trxId, d, otdH, host, wwftZaak); } catch(e){ /* mailfout blokkeert de ack niet */ }
       return ok({ updated:'ondertekend', dossier:d.id });
     }
 
+    // Tussenstand: mogelijk hebben alle opdrachtgevers net getekend → makelaar persoonlijk uitnodigen
+    if(d.status !== 'ondertekend'){
+      try { await nodigMakelaarUit(trxId, d, otdH); } catch(e){ /* blokkeert de ack niet */ }
+    }
     return ok({ ontvangen:true, status });
   } catch(e){ return ok({ error:String((e&&e.message)||e) }); }
 };
