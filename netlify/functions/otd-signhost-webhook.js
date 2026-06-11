@@ -98,19 +98,34 @@ async function verstuurGetekend(trxId, d, otdH, host){
   if(d.taal === 'nl_en') att.push({ filename:'General-Terms-and-Conditions-for-Consumers.pdf', path: docsBase+'General_terms_and_conditions_and_regulations_for_consumers.pdf' });
   if(receiptB64) att.push({ filename:'Ondertekenbewijs.pdf', content: receiptB64 });
 
-  const aanhef = og0.voornamen ? ('Beste '+og0.voornamen) : 'Beste heer/mevrouw';
+  const eng = (d.taal === 'nl_en'); // knop NL+EN = klantcommunicatie in het Engels
+  const aanhef = eng
+    ? ('Dear ' + (og0.voornamen || 'Sir/Madam'))
+    : ('Beste ' + (og0.voornamen || 'heer/mevrouw'));
+  const omschrijvingMail = eng
+    ? (isAankoop ? ('your purchase engagement' + (d.object_adres ? (' (' + d.object_adres + ')') : '')) : obj)
+    : omschrijving;
+  const T = eng ? {
+    body1: 'Thank you! The service agreement (opdracht tot dienstverlening) for <strong>'+omschrijvingMail+'</strong> has been signed. Attached you will find the <strong>signed copy</strong> and the accompanying <strong>general terms and conditions</strong>'+(receiptB64?', as well as the signing receipt':'')+'.',
+    body2: 'We will now get to work for you. What to expect in the coming period: <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">read more here &rsaquo;</a>',
+    groet: 'Kind regards,'
+  } : {
+    body1: 'Bedankt! De opdracht tot dienstverlening voor <strong>'+omschrijvingMail+'</strong> is ondertekend. In de bijlage vindt u het <strong>getekende exemplaar</strong> en de bijbehorende <strong>algemene voorwaarden</strong>'+(receiptB64?', plus het ondertekenbewijs':'')+'.',
+    body2: 'Wij gaan nu voor u aan de slag. Wat er de komende periode op u afkomt, leest u <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">op deze pagina &rsaquo;</a>',
+    groet: 'Met vriendelijke groet,'
+  };
   const klantHtml =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
       '<div style="background:#16243f;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f"><strong style="font-size:15px;letter-spacing:1px">MAKELAARSVAN AMSTERDAM</strong></div>' +
       '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:26px 24px;background:#fffdfa">' +
         '<p style="margin:0 0 14px">'+aanhef+',</p>' +
-        '<p style="margin:0 0 14px">Bedankt! De opdracht tot dienstverlening voor <strong>'+omschrijving+'</strong> is ondertekend. In de bijlage vindt u het <strong>getekende exemplaar</strong> en de bijbehorende <strong>algemene voorwaarden</strong>'+(receiptB64?', plus het ondertekenbewijs':'')+'.</p>' +
-        '<p style="margin:0 0 14px">Wij gaan nu voor u aan de slag. Wat er de komende periode op u afkomt, leest u <a href="https://'+host+tipsPad+'" style="color:#df5a0f;font-weight:bold">op deze pagina &rsaquo;</a></p>' +
-        '<p style="margin:0">Met vriendelijke groet,<br><strong>'+makNaam+'</strong><br><span style="color:#6c7689;font-size:13px">'+(makEmail||'amsterdam@makelaarsvan.nl')+' &middot; +31 (0)20 333 11 10</span></p>' +
+        '<p style="margin:0 0 14px">'+T.body1+'</p>' +
+        '<p style="margin:0 0 14px">'+T.body2+'</p>' +
+        '<p style="margin:0">'+T.groet+'<br><strong>'+makNaam+'</strong><br><span style="color:#6c7689;font-size:13px">'+(makEmail||'amsterdam@makelaarsvan.nl')+' &middot; +31 (0)20 333 11 10</span></p>' +
       '</div>' +
       '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
     '</div>';
-  const klantPayload = { from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to: ontvangers, subject:'Uw getekende opdracht tot dienstverlening — '+(isAankoop ? (d.object_adres || 'aankoopbegeleiding') : obj), html: klantHtml, attachments: att };
+  const klantPayload = { from:'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>', to: ontvangers, subject:(eng ? 'Your signed service agreement — ' : 'Uw getekende opdracht tot dienstverlening — ')+(isAankoop ? (d.object_adres || (eng ? 'purchase support' : 'aankoopbegeleiding')) : obj), html: klantHtml, attachments: att };
   if(makEmail) klantPayload.reply_to = makEmail;
   await fetch('https://api.resend.com/emails',{ method:'POST', headers:{ Authorization:'Bearer '+RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(klantPayload) });
 

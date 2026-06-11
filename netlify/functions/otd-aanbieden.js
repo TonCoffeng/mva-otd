@@ -72,18 +72,42 @@ exports.handler = async (event) => {
       }
       if(og && og.email){
         mailTo = og.email;
-        const aanhef = og.voornamen ? ('Beste ' + og.voornamen) : 'Beste heer/mevrouw';
+        const eng = (d.taal === 'nl_en'); // knop NL+EN = klantcommunicatie in het Engels
+        const aanhef = eng
+          ? ('Dear ' + (og.voornamen || 'Sir/Madam'))
+          : ('Beste ' + (og.voornamen || 'heer/mevrouw'));
         const isAankoop = (d.documenttype === 'aankoop');
-        const obj = d.object_adres || (isAankoop ? 'uw aankoopopdracht' : 'uw woning');
-        const onderwerpDeel = isAankoop ? (d.object_adres || 'aankoopbegeleiding') : obj;
-        const introTekst = isAankoop
-          ? ('Dank voor het goede gesprek over ' + (d.object_adres ? ('de aankoop van <strong>' + d.object_adres + '</strong>') : 'uw woningzoektocht') + '. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.')
-          : ('Dank voor het goede gesprek over de verkoop van <strong>' + obj + '</strong>. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.');
-        const makNaam = (mak && (mak.naam || mak.entiteit_naam)) || 'uw makelaar';
+        const obj = d.object_adres || (isAankoop ? (eng ? 'your purchase engagement' : 'uw aankoopopdracht') : (eng ? 'your home' : 'uw woning'));
+        const onderwerpDeel = isAankoop ? (d.object_adres || (eng ? 'purchase support' : 'aankoopbegeleiding')) : obj;
+        const introTekst = eng
+          ? (isAankoop
+              ? ('Thank you for the pleasant conversation about ' + (d.object_adres ? ('the purchase of <strong>' + d.object_adres + '</strong>') : 'your home search') + '. As discussed, we have prepared the service agreement (opdracht tot dienstverlening) for you, setting out exactly what we will do for you and which terms apply. Please take your time to read it &mdash; the agreement only becomes final once you have signed. You can place a question or comment directly online.')
+              : ('Thank you for the pleasant conversation about the sale of <strong>' + obj + '</strong>. As discussed, we have prepared the service agreement (opdracht tot dienstverlening) for you, setting out exactly what we will do for you and which terms apply. Please take your time to read it &mdash; the agreement only becomes final once you have signed. You can place a question or comment directly online.'))
+          : (isAankoop
+              ? ('Dank voor het goede gesprek over ' + (d.object_adres ? ('de aankoop van <strong>' + d.object_adres + '</strong>') : 'uw woningzoektocht') + '. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.')
+              : ('Dank voor het goede gesprek over de verkoop van <strong>' + obj + '</strong>. Zoals besproken hebben wij de opdracht tot dienstverlening voor u klaargezet, met daarin precies wat wij voor u gaan doen en welke afspraken daarbij horen. Leest u alles rustig door &mdash; pas met uw handtekening is de opdracht definitief. Een vraag of opmerking plaatsen kan direct online.'));
+        const makNaam = (mak && (mak.naam || mak.entiteit_naam)) || (eng ? 'your agent' : 'uw makelaar');
         const makEmail = (mak && mak.email) || 'amsterdam@makelaarsvan.nl';
-        const tweetalig = (d.taal === 'nl_en');
+        const tweetalig = eng;
         const tipsLink = 'https://' + host + (isAankoop ? '/na-ondertekening-aankoop.html' : '/na-ondertekening.html');
         const docsBase = 'https://' + host + '/docs/';
+        const T = eng ? {
+          knop: 'View &amp; sign the agreement',
+          fallback: 'Button not working? Use this link instead:',
+          wwftKop: 'Identification (Wwft)',
+          wwft: 'As real estate agents we are legally required to verify the identity of our clients. At the start of our engagement we will ask you to identify yourself with a valid ID document &mdash; we will let you know how and when this is most convenient.',
+          tips: 'Curious what happens after signing? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Read what to expect &rsaquo;</a>',
+          voorwaarden: 'The general terms and conditions applicable to this agreement are attached to this e-mail.',
+          groet: 'Kind regards,'
+        } : {
+          knop: 'Opdracht bekijken &amp; ondertekenen',
+          fallback: 'Werkt de knop niet? Open dan deze link:',
+          wwftKop: 'Identificatie (Wwft)',
+          wwft: 'Als makelaar zijn wij wettelijk verplicht onze opdrachtgevers te identificeren. Bij de start vragen wij u zich te legitimeren met een geldig identiteitsbewijs &mdash; wij laten u weten hoe en wanneer dit het makkelijkst kan.',
+          tips: 'Benieuwd wat er na ondertekening gebeurt? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Lees hier wat er op u afkomt &rsaquo;</a>',
+          voorwaarden: 'De algemene voorwaarden die bij deze opdracht horen, vindt u als bijlage bij deze e-mail.',
+          groet: 'Met vriendelijke groet,'
+        };
         const html =
           '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:auto;color:#27313f;line-height:1.55">' +
             '<div style="background:#16243f;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;border-bottom:3px solid #df5a0f">' +
@@ -91,15 +115,14 @@ exports.handler = async (event) => {
             '<div style="border:1px solid #e9e3d8;border-top:none;border-radius:0 0 12px 12px;padding:26px 24px;background:#fffdfa">' +
               '<p style="margin:0 0 14px">' + aanhef + ',</p>' +
               '<p style="margin:0 0 14px">' + introTekst + '</p>' +
-              '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#df5a0f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block">Opdracht bekijken &amp; ondertekenen</a></p>' +
-              '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">Werkt de knop niet? Open dan deze link: <a href="' + link + '" style="color:#df5a0f">' + link + '</a></p>' +
+              '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#df5a0f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block">' + T.knop + '</a></p>' +
+              '<p style="font-size:13px;color:#6c7689;margin:0 0 22px">' + T.fallback + ' <a href="' + link + '" style="color:#df5a0f">' + link + '</a></p>' +
               '<div style="background:#fdf1e8;border-left:3px solid #df5a0f;border-radius:0 8px 8px 0;padding:13px 16px;margin:0 0 18px">' +
-                '<strong style="color:#df5a0f">Identificatie (Wwft)</strong><br>' +
-                'Als makelaar zijn wij wettelijk verplicht onze opdrachtgevers te identificeren. Bij de start vragen wij u zich te legitimeren met een geldig identiteitsbewijs &mdash; wij laten u weten hoe en wanneer dit het makkelijkst kan.' +
+                '<strong style="color:#df5a0f">' + T.wwftKop + '</strong><br>' + T.wwft +
               '</div>' +
-              '<p style="margin:0 0 14px">Benieuwd wat er na ondertekening gebeurt? <a href="' + tipsLink + '" style="color:#df5a0f;font-weight:bold">Lees hier wat er op u afkomt &rsaquo;</a></p>' +
-              '<p style="margin:0 0 18px">De algemene voorwaarden die bij deze opdracht horen, vindt u als bijlage bij deze e-mail.</p>' +
-              '<p style="margin:0">Met vriendelijke groet,<br><strong>' + makNaam + '</strong><br>' +
+              '<p style="margin:0 0 14px">' + T.tips + '</p>' +
+              '<p style="margin:0 0 18px">' + T.voorwaarden + '</p>' +
+              '<p style="margin:0">' + T.groet + '<br><strong>' + makNaam + '</strong><br>' +
                 '<span style="color:#6c7689;font-size:13px">' + makEmail + ' &middot; +31 (0)20 333 11 10</span></p>' +
             '</div>' +
             '<div style="text-align:center;color:#9aa3b3;font-size:11px;padding:14px">MakelaarsVan Amsterdam &middot; Valkenburgerstraat 67, 1011 MG Amsterdam</div>' +
@@ -116,7 +139,7 @@ exports.handler = async (event) => {
         const payload = {
           from: 'MakelaarsVan Amsterdam <noreply@makelaarsvan.nl>',
           to: [og.email],
-          subject: 'Uw opdracht tot dienstverlening — ' + onderwerpDeel,
+          subject: (eng ? 'Your service agreement — ' : 'Uw opdracht tot dienstverlening — ') + onderwerpDeel,
           html: html,
           attachments: attachments
         };
