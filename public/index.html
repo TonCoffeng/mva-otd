@@ -24,6 +24,11 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
 .header-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:.3px}
 .header-sub{color:rgba(255,255,255,.55);font-size:11px}
 .header-badge{background:var(--oranje);color:#fff;border-radius:20px;padding:4px 13px;font-size:13px;font-weight:600;white-space:nowrap}
+.type-tabs{display:flex;gap:4px;background:rgba(255,255,255,.12);border-radius:22px;padding:4px}
+.type-tab{color:rgba(255,255,255,.65);text-decoration:none;font-size:13px;font-weight:600;padding:6px 16px;border-radius:18px;white-space:nowrap;transition:color .15s}
+.type-tab.actief{background:#fff;color:var(--navy)}
+.type-tab:not(.actief):hover{color:#fff}
+@media(max-width:600px){.type-tab{padding:5px 11px;font-size:12px}.header-badge{display:none}}
 
 /* SCHERM-WRAP */
 .screen{display:none;animation:fade .35s ease both}
@@ -246,6 +251,10 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
       <div class="header-sub" id="hdr-sub">Rogier de Vries</div>
     </div>
   </div>
+  <nav class="type-tabs">
+    <a class="type-tab actief" href="index.html">Verkoop</a>
+    <a class="type-tab" href="aankoop.html">Aankoop</a>
+  </nav>
   <div class="header-rechts">
     <div class="header-badge" id="hdr-badge">3 dossiers</div>
     <button class="btn-uitloggen" onclick="AUTH.logout()">Uitloggen</button>
@@ -1117,7 +1126,7 @@ async function laadPanden(){
     const j = await res.json();
     if(!res.ok) throw new Error(j.error || 'fout');
     window._PANDEN = (j.panden || []).map(p => ({
-      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||''
+      rwid: p.realworks_object_id, adres: p.adres||'', plaats: _cap(p.plaats), postcode: p.postcode||'', status: p.status||''
     }));
   } catch(e){ window._PANDEN = []; }
 }
@@ -1133,7 +1142,8 @@ function zoekPand(){
   window._PANDRES = {};
   box.innerHTML = lijst.map((p,i) => {
     window._PANDRES[i] = p;
-    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats].filter(Boolean).join(' · ')+'</span></div>';
+    const st = p.status ? _cap(p.status.replace(/_/g,' ')) : '';
+    return '<div class="zoek-item" onclick="kiesPandUit('+i+')"><strong>'+(p.adres||'(geen adres)')+'</strong><span class="zoek-sub">'+[p.postcode,p.plaats,st].filter(Boolean).join(' · ')+'</span></div>';
   }).join('');
 }
 function kiesPandUit(i){

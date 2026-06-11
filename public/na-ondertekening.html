@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wat nu? — Na het tekenen van je opdracht · Makelaars van Amsterdam</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1A2B5F;
+    --oranje:#E8500A;
+    --papier:#F9F6EF;
+    --inkt:#23211C;
+    --grijs:#6B6760;
+    --lijn:#E5E0D6;
+    --wit:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Hanken Grotesk',sans-serif;
+    background:var(--papier);
+    color:var(--inkt);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+
+  /* Header */
+  header{padding:56px 0 40px;animation:fadeUp .6s ease both}
+  .eyebrow{
+    font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--oranje);margin-bottom:14px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(2rem,5vw,3.1rem);line-height:1.12;
+    color:var(--navy);max-width:760px;
+  }
+  .intro{
+    margin-top:20px;max-width:680px;font-size:1.08rem;color:var(--grijs);
+  }
+  .intro strong{color:var(--inkt)}
+
+  /* Stappen */
+  .stappen{padding:8px 0 24px}
+  .stap{
+    background:var(--wit);border:1px solid var(--lijn);border-radius:14px;
+    padding:30px 32px;margin-bottom:18px;
+    display:grid;grid-template-columns:64px 1fr;gap:22px;align-items:start;
+    animation:fadeUp .6s ease both;
+  }
+  .stap:nth-child(1){animation-delay:.05s}
+  .stap:nth-child(2){animation-delay:.10s}
+  .stap:nth-child(3){animation-delay:.15s}
+  .stap:nth-child(4){animation-delay:.20s}
+  .stap:nth-child(5){animation-delay:.25s}
+  .stap:nth-child(6){animation-delay:.30s}
+  .stap:nth-child(7){animation-delay:.35s}
+  .stap-nr{
+    font-family:'Fraunces',serif;font-size:2rem;font-weight:700;
+    color:var(--navy);background:var(--papier);
+    width:64px;height:64px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--lijn);
+  }
+  .stap h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem;
+    color:var(--navy);margin-bottom:8px;
+  }
+  .stap p{color:var(--inkt);margin-bottom:8px}
+  .stap p:last-child{margin-bottom:0}
+  .stap .sub{color:var(--grijs);font-size:.95rem}
+  .stap ul{margin:8px 0 0 18px;color:var(--inkt)}
+  .stap li{margin-bottom:5px}
+
+  /* WWFT-accentblok */
+  .stap.accent{
+    border-left:5px solid var(--oranje);
+  }
+  .badge{
+    display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--oranje);
+    background:#FCEBE0;border-radius:99px;padding:4px 12px;margin-bottom:10px;
+  }
+
+  /* Afsluiter */
+  .afsluiter{
+    background:var(--navy);color:var(--wit);border-radius:14px;
+    padding:38px 36px;margin:26px 0 64px;
+    animation:fadeUp .6s ease both;animation-delay:.4s;
+  }
+  .afsluiter h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem;margin-bottom:10px;
+  }
+  .afsluiter p{color:#D8DCEA;max-width:640px}
+  .afsluiter p strong{color:var(--wit)}
+
+  footer{
+    border-top:1px solid var(--lijn);padding:28px 0 48px;
+    font-size:.85rem;color:var(--grijs);
+  }
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+  @media(max-width:680px){
+    .stap{grid-template-columns:1fr;padding:24px 22px}
+    .stap-nr{width:48px;height:48px;font-size:1.4rem}
+    .afsluiter{padding:30px 24px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Makelaars van Amsterdam</div>
+    <h1>Je opdracht is getekend.<br>Dit komt er nu op je af.</h1>
+    <p class="intro">Goed nieuws: de handtekeningen staan eronder en we kunnen aan de slag. Hieronder lees je <strong>stap voor stap</strong> wat er de komende periode gebeurt, wat wij doen en waar we jou voor nodig hebben. Zo weet je precies waar je aan toe bent.</p>
+  </header>
+
+  <section class="stappen">
+
+    <div class="stap accent">
+      <div class="stap-nr">1</div>
+      <div>
+        <div class="badge">Wettelijk verplicht</div>
+        <h2>Identificatie (WWFT-controle)</h2>
+        <p>Als makelaar zijn wij wettelijk verplicht om de identiteit van onze opdrachtgevers vast te stellen — dat heet de WWFT-controle (Wet ter voorkoming van witwassen en financieren van terrorisme). Dit is een standaardstap bij elke opdracht en zegt niets over jou persoonlijk.</p>
+        <p class="sub">Wat we van je nodig hebben: een <strong>geldig legitimatiebewijs</strong> (paspoort, identiteitskaart of rijbewijs). Je makelaar neemt hiervoor op korte termijn contact met je op. Je gegevens worden vertrouwelijk behandeld en alleen gebruikt waarvoor de wet het vereist.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">2</div>
+      <div>
+        <h2>Documenten verzamelen</h2>
+        <p>Voor een soepele verkoop hebben we een aantal stukken nodig. Je makelaar stuurt je een overzicht, maar denk alvast aan:</p>
+        <ul>
+          <li>Eigendomsbewijs (heb je dat niet bij de hand? Wij kunnen het opvragen)</li>
+          <li>De vragenlijst en de lijst van zaken (wat blijft er in de woning?)</li>
+          <li>Bij een appartement: de VvE-stukken (splitsingsakte, notulen, jaarstukken)</li>
+          <li>Het energielabel — nog niet aanwezig? Dan regelen we de aanvraag samen</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">3</div>
+      <div>
+        <h2>De woning verkoopklaar maken</h2>
+        <p>Nu wordt het leuk. De onderdelen uit je woningpromotieplan gaan lopen: fotografie, eventueel styling of inrichtingsadvies, plattegronden en de woningtekst. Je makelaar plant de afspraken met je in.</p>
+        <p class="sub">Tip: hoe opgeruimder en lichter de woning bij de fotoshoot, hoe sterker de eerste indruk online.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">4</div>
+      <div>
+        <h2>Live op Funda</h2>
+        <p>Zodra de presentatie staat, gaat de woning online — op Funda en via onze eigen kanalen. Vanaf dat moment is je woning zichtbaar voor duizenden zoekers. Je makelaar stemt het moment van livegang met je af; soms is een strategisch moment (bijvoorbeeld net voor het weekend) net even slimmer.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">5</div>
+      <div>
+        <h2>Bezichtigingen</h2>
+        <p>Geïnteresseerden melden zich en je makelaar plant de bezichtigingen. Jij hoeft er niet bij te zijn — sterker nog: kopers kijken vrijer rond zonder de eigenaar erbij. Na elke ronde hoor je van je makelaar hoe het ging en wat de reacties waren.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">6</div>
+      <div>
+        <h2>Biedingen en onderhandeling</h2>
+        <p>Komen er biedingen binnen, dan adviseert je makelaar over de strategie: ingaan op een bod, tegenbod doen, of bij meerdere gegadigden een inschrijving organiseren. Het advies is van ons — <strong>de beslissing is altijd aan jou</strong>.</p>
+      </div>
+    </div>
+
+    <div class="stap">
+      <div class="stap-nr">7</div>
+      <div>
+        <h2>Koopovereenkomst en overdracht</h2>
+        <p>Is er een akkoord, dan stellen we de koopovereenkomst op. De koper heeft daarna drie dagen wettelijke bedenktijd en eventueel ontbindende voorwaarden (zoals financiering). Daarna is het wachten op de grote dag: de overdracht bij de notaris, waar de sleutels wisselen en de verkoop officieel rond is.</p>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="afsluiter">
+    <h2>Vragen tussendoor?</h2>
+    <p>Je makelaar is je vaste aanspreekpunt gedurende het hele traject — bel of mail gerust, ook met kleine vragen. <strong>Liever even teruglezen wat we hebben afgesproken?</strong> De getekende opdracht tot dienstverlening heb je per e-mail ontvangen.</p>
+  </div>
+
+  <footer>
+    Makelaars van Amsterdam · Valkenburgerstraat 67, 1011 MG Amsterdam · makelaarsvan.nl
+  </footer>
+
+</div>
+
+</body>
+</html>
