@@ -84,7 +84,13 @@ async function genereerOtdPdf({ dossier, opdrachtgevers, makelaar, regels }){
   txt(tw?'Courtage / Fee':'Courtage', M, y, {size:tw?9:10.5, color:grijs}); y-=15;
   wrap(courtageTekst(d), W);
   y-=3;
-  rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term'); y-=8;
+  rij('Looptijd',Vw(d.looptijd||'onbepaalde tijd'),'Term');
+  const opstartTxt = (d.opstartkosten_van_toepassing===false)
+    ? (tw ? 'niet van toepassing / not applicable' : 'niet van toepassing')
+    : [ (d.opstartkosten_bedrag!=null && d.opstartkosten_bedrag!=='') ? (euro(d.opstartkosten_bedrag)+' incl. btw') : 'van toepassing',
+        d.opstartkosten_termijn ? ((tw?'betaaltermijn / payment term ':'betaaltermijn ')+d.opstartkosten_termijn) : null ].filter(Boolean).join('  ·  ');
+  rij('Opstartkosten', opstartTxt, 'Start-up costs');
+  y-=8;
   if(d.bijzonderheden){ sectie('Bijzonderheden','Additional details'); wrap(d.bijzonderheden,W); y-=8; }
 
   // Woningpromotieplan (gekozen diensten + totaal)
