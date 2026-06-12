@@ -475,6 +475,8 @@ body{font-family:'Roboto',sans-serif;background:var(--grijs);color:var(--navy);m
             <div class="ckeuze" id="opstart_nee" onclick="kiesOpstart(false)">Nee</div>
           </div>
         </div>
+        <div class="fg" id="fg_opstart_bedrag"><label>Opstartkosten (&euro;, incl. BTW)</label>
+          <input id="i_opstart" placeholder="bijv. 350" oninput="render()"></div>
         <div class="fg" id="fg_term"><label>Betaaltermijn opstartkosten</label>
           <select id="i_term" onchange="render()"><option>14 dagen</option><option>30 dagen</option><option>Bij opdracht</option></select></div>
         <div class="fg"><label>Aanvaarding</label><input id="i_aanv" value="in overleg" oninput="render()"></div>
@@ -743,6 +745,7 @@ function kiesOpstart(ja){
   if(j) j.classList.toggle('aan', ja);
   if(n) n.classList.toggle('aan', !ja);
   const t=document.getElementById('fg_term'); if(t) t.style.display = ja ? 'block' : 'none';
+  const b=document.getElementById('fg_opstart_bedrag'); if(b) b.style.display = ja ? 'block' : 'none';
   render();
 }
 function togBeeind(){
@@ -978,7 +981,7 @@ function render(){
     <div class="kv"><span class="k">Aanvaarding</span><span>${v('i_aanv')}</span></div>
     <h4>Kosten en courtage</h4>
     <div class="pv-court">${court}</div>
-    <div class="kv"><span class="k">Opstartkosten</span><span>${state.opstart===false?'niet van toepassing':('van toepassing · '+(v('i_term')||'—'))}</span></div>
+    <div class="kv"><span class="k">Opstartkosten</span><span>${state.opstart===false?'niet van toepassing':([v('i_opstart')?('€ '+v('i_opstart')+' incl. btw'):'van toepassing', v('i_term')||null].filter(Boolean).join(' · '))}</span></div>
     <div class="kv"><span class="k">Beëindigingskosten</span><span>${state.beeind===false?'standaard regime':'alleen daadwerkelijk gemaakte kosten'}</span></div>
     ${v('i_opm').trim()?`<div class="kv"><span class="k">Opmerkingen</span><span>${v('i_opm')}</span></div>`:''}
     ${_isAankoop ? '' : '<h4>Afspraken</h4>'+vinkjes}
@@ -1006,7 +1009,7 @@ function vorige(){if(state.stap>0)ganaarStap(state.stap-1)}
 function wisFormulier(){
   ['i_pandzoek','i_obj','i_rwid','i_plaats','i_pc','i_soort_anders','i_zoek','i_cloze',
    'i_vn','i_an','i_em','i_tel','i_gbp','i_gbd','i_pct','i_vast','i_vp','i_mp_waarde','i_mp_drempel',
-   'i_opm',
+   'i_opm','i_opstart',
    'z_minprijs','z_maxprijs','z_type','z_soort_anders','z_locatie','z_oppervlakte','z_kamers','z_buiten','z_overig'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
@@ -1099,6 +1102,7 @@ async function laadDossierInBouwer(id){
   if(d.hypotheek_gecheckt===false && d.hypotheekshop_doorsturen===true && !state.hypDoor) togHypDoor();
   kiesOpstart(d.opstartkosten_van_toepassing===false ? false : true);
   if(d.opstartkosten_termijn){ const t=document.getElementById('i_term'); if(t) t.value=d.opstartkosten_termijn; }
+  if(d.opstartkosten_bedrag!=null){ const b=document.getElementById('i_opstart'); if(b) b.value=String(d.opstartkosten_bedrag).replace('.',','); }
   set('i_opm', d.bijzonderheden);
   state.beeind = (d.geen_beeindigingskosten===false)?false:true;
   const _tb2=document.getElementById('tg_beeind'); if(_tb2) _tb2.classList.toggle('aan', state.beeind);
@@ -1147,7 +1151,17 @@ async function openBouwer(dossierId){
     laadProducten();           // catalogus + (later) geleerde set voor deze makelaar
   }
 }
-function naarOverzicht(){
+function _formulierHeeftInhoud(){
+  const ids=['i_obj','i_vn','i_an','i_em','i_pct','i_vast','i_vp','z_locatie','z_maxprijs','i_opm','i_opstart'];
+  if(ids.some(id=>{ const el=document.getElementById(id); return el && el.value && el.value.trim(); })) return true;
+  return PROD.gekozen && PROD.gekozen.size>0;
+}
+function naarOverzicht(force){
+  const bouwerActief = document.getElementById('bouwer').classList.contains('actief');
+  if(force!==true && bouwerActief && _formulierHeeftInhoud()){
+    if(confirm('Je hebt een opdracht in bewerking.\n\nOK = eerst opslaan als concept en dan terug\nAnnuleren = hier blijven (niets gaat verloren)')){ slaOpAlsConcept(); }
+    return;
+  }
   document.getElementById('bouwer').classList.remove('actief');
   document.getElementById('overzicht').classList.add('actief');
   document.getElementById('hdr-titel').textContent="Opdracht tot dienstverlening";
@@ -1215,6 +1229,7 @@ function _verzamelPayload(){
     hypotheekshop_doorsturen: (state.hyp===false && state.hypDoor) ? true : false,
     opstartkosten_van_toepassing: (state.opstart===false) ? false : true,
     opstartkosten_termijn: (state.opstart===false) ? null : (v('i_term') || null),
+    opstartkosten_bedrag: (state.opstart===false) ? null : (v('i_opstart') || null),
     geen_beeindigingskosten: (state.beeind===false) ? false : true,
     bijzonderheden: v('i_opm') || null,
     datum_opdracht: vandaag,
@@ -1232,7 +1247,13 @@ async function _slaOpConcept(){
   let makelaarId = null;
   if(fgMak && fgMak.style.display !== 'none'){
     makelaarId = document.getElementById('i_makelaar').value;
-    if(!makelaarId){ alert('Kies eerst de makelaar voor wie je de opdracht opstelt.'); return null; }
+    if(!makelaarId){
+      ganaarStap(0);
+      const s=document.getElementById('i_makelaar');
+      if(s){ s.style.borderColor='#ea5810'; s.scrollIntoView({behavior:'smooth',block:'center'}); s.focus(); s.onchange=()=>{ s.style.borderColor=''; if(PROD.geladen) laadProducten(); }; }
+      alert('Kies eerst de makelaar voor wie je de opdracht opstelt. Je invoer blijft gewoon staan.');
+      return null;
+    }
   }
   const token = await geldigeToken();
   if(!token){ sessieVerlopen(); return null; }
@@ -1254,7 +1275,7 @@ async function slaOpAlsConcept(){
     const id = await _slaOpConcept();
     if(!id){ btn.disabled = false; btn.textContent = oud; return; }
     btn.textContent = 'Opgeslagen ✓';
-    setTimeout(naarOverzicht, 600);
+    setTimeout(()=>naarOverzicht(true), 600);
   }catch(e){
     alert('Opslaan mislukt: '+(e.message||e));
     btn.disabled = false; btn.textContent = oud;
@@ -1267,7 +1288,7 @@ async function slaOpEnBied(){
     const id = await _slaOpConcept();
     if(!id){ btn.disabled = false; btn.textContent = oud; return; }
     btn.disabled = false; btn.textContent = oud;
-    naarOverzicht();
+    naarOverzicht(true);
     await biedAan(id);
   }catch(e){
     alert('Mislukt: '+(e.message||e));

@@ -249,9 +249,14 @@ function render(j){
   html += '<div class="sec"><h2>'+esc(L('Opdrachtgever'+(og.length>1?'s':''), og.length>1?'Clients':'Client'))+'</h2>'
     + '<div class="personen">'+(og.length? og.map(persoonBlok).join('') : '<div class="rij"><span class="k">—</span></div>')+'</div></div>';
 
+  const _opstartTxt = (d.opstartkosten_van_toepassing===false)
+    ? L('niet van toepassing','not applicable')
+    : [ (d.opstartkosten_bedrag!=null && d.opstartkosten_bedrag!=='') ? ('\u20AC '+Number(d.opstartkosten_bedrag).toLocaleString('nl-NL')+' '+L('incl. btw','incl. VAT')) : L('van toepassing','applicable'),
+        d.opstartkosten_termijn ? (L('betaaltermijn ','payment term ')+d.opstartkosten_termijn) : null ].filter(Boolean).join(' \u00B7 ');
   html += '<div class="sec"><h2>'+esc(L('Courtage & voorwaarden','Fee & terms'))+'</h2>'
     + rij(L('Courtage','Fee'), courtageTekst(d))
-    + rij(L('Looptijd','Term'), Vw(d.looptijd)) + '</div>';
+    + rij(L('Looptijd','Term'), Vw(d.looptijd))
+    + rij(L('Opstartkosten','Start-up costs'), _opstartTxt) + '</div>';
 
   if(d.bijzonderheden){
     html += '<div class="sec"><h2>'+esc(L('Bijzonderheden','Additional details'))+'</h2><div class="bijz">'+esc(d.bijzonderheden)+'</div></div>';
