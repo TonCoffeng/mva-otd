@@ -39,7 +39,8 @@ exports.handler = async (event) => {
 
     const gRes = await fetch(LEADPOOL_URL+'/rest/v1/gebruikers?select=rol&email=eq.'+encodeURIComponent(email),{headers:{apikey:LEADPOOL_ANON,Authorization:'Bearer '+jwt}});
     const gArr = gRes.ok ? await gRes.json() : [];
-    const isDirectie = (gArr[0] && gArr[0].rol === 'directie');
+    // directie én compliance (virtueel assistent makelaars) hebben volledige OTD-toegang
+    const isDirectie = (gArr[0] && (gArr[0].rol === 'directie' || gArr[0].rol === 'compliance'));
 
     const otdH = { apikey:OTD_SERVICE_KEY, Authorization:'Bearer '+OTD_SERVICE_KEY, 'Content-Type':'application/json' };
 
@@ -86,7 +87,6 @@ exports.handler = async (event) => {
         soort_object: body.soort_object || null,
         vraagprijs: parseNLNum(body.vraagprijs),
         zoek_max_prijs: parseNLNum(body.zoek_max_prijs),
-        zoek_min_prijs: parseNLNum(body.zoek_min_prijs),
         zoek_type: body.zoek_type || null,
         zoek_locatie: body.zoek_locatie || null,
         zoek_oppervlakte: body.zoek_oppervlakte || null,
@@ -102,13 +102,6 @@ exports.handler = async (event) => {
         courtage_meerprijs_type: body.courtage_meerprijs_type || null,
         courtage_meerprijs_drempel: parseNLNum(body.courtage_meerprijs_drempel),
         cloze_id: body.cloze_id || null,
-        hypotheek_gecheckt: (typeof body.hypotheek_gecheckt==='boolean') ? body.hypotheek_gecheckt : null,
-        hypotheekshop_doorsturen: body.hypotheekshop_doorsturen === true,
-        opstartkosten_van_toepassing: body.opstartkosten_van_toepassing === false ? false : true,
-        opstartkosten_termijn: body.opstartkosten_van_toepassing === false ? null : (body.opstartkosten_termijn || null),
-        opstartkosten_bedrag: body.opstartkosten_van_toepassing === false ? null : parseNLNum(body.opstartkosten_bedrag),
-        geen_beeindigingskosten: body.geen_beeindigingskosten === false ? false : true,
-        bijzonderheden: body.bijzonderheden || null,
         herkomst_relatie: body.herkomst || null,
         reden_opdracht: body.reden || null,
         status: 'concept'

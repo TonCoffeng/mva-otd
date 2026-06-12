@@ -38,7 +38,8 @@ exports.handler = async (event) => {
     const gebr = gArr[0] || {};
     const rol = gebr.rol || 'onbekend';
     const naam = gebr.naam || email;
-    const isDirectie = (rol === 'directie');
+    // directie én compliance (virtueel assistent makelaars) hebben volledige OTD-toegang
+    const isDirectie = (rol === 'directie' || rol === 'compliance');
 
     // 3) OTD-database via service-sleutel
     const otdH = { apikey: OTD_SERVICE_KEY, Authorization: 'Bearer ' + OTD_SERVICE_KEY };

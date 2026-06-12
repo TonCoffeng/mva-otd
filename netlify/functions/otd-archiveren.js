@@ -24,7 +24,8 @@ exports.handler = async (event) => {
 
     const gRes = await fetch(LEADPOOL_URL+'/rest/v1/gebruikers?select=rol&email=eq.'+encodeURIComponent(email),{headers:{apikey:LEADPOOL_ANON,Authorization:'Bearer '+jwt}});
     const gArr = gRes.ok ? await gRes.json() : [];
-    const isDirectie = (gArr[0] && gArr[0].rol === 'directie');
+    // directie én compliance (virtueel assistent makelaars) hebben volledige OTD-toegang
+    const isDirectie = (gArr[0] && (gArr[0].rol === 'directie' || gArr[0].rol === 'compliance'));
 
     const otdH = { apikey:OTD_SERVICE_KEY, Authorization:'Bearer '+OTD_SERVICE_KEY };
     const body = JSON.parse(event.body||'{}');

@@ -41,7 +41,8 @@ exports.handler = async (event) => {
       headers: { apikey: LEADPOOL_ANON, Authorization: 'Bearer ' + jwt }
     });
     const gArr = gRes.ok ? await gRes.json() : [];
-    const isDirectie = (gArr[0] && gArr[0].rol === 'directie');
+    // directie én compliance (virtueel assistent makelaars) hebben volledige OTD-toegang
+    const isDirectie = (gArr[0] && (gArr[0].rol === 'directie' || gArr[0].rol === 'compliance'));
 
     const q = ((event.queryStringParameters && event.queryStringParameters.q) || '').trim();
     if (q.length < 2) return json(200, { relaties: [] });

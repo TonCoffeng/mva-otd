@@ -28,7 +28,8 @@ exports.handler = async (event) => {
       headers: { apikey: LEADPOOL_ANON, Authorization: 'Bearer ' + jwt }
     });
     const gArr = gRes.ok ? await gRes.json() : [];
-    const isDirectie = (gArr[0] && gArr[0].rol === 'directie');
+    // directie én compliance (virtueel assistent makelaars) hebben volledige OTD-toegang
+    const isDirectie = (gArr[0] && (gArr[0].rol === 'directie' || gArr[0].rol === 'compliance'));
 
     let path = '/rest/v1/panden?select=realworks_object_id,adres,postcode,plaats,status,accountmanager_email&order=adres.asc';
     if (!isDirectie) path += '&accountmanager_email=eq.' + encodeURIComponent(email);
