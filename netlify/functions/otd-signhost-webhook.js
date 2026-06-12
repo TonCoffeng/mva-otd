@@ -228,6 +228,68 @@ async function nodigMakelaarUit(trxId, d, otdH){
   });
 }
 
+// Na volledige ondertekening: welkom/stappenplan-mail (brochure-mail) via de
+// communicatie-app — de ene uitgaande poort. De webhook schrijft alleen het event
+// en triggert de mail-motor; templates en routing leven in mva-communicatie.
+// Idempotent via de d.status-guard in de handler + het verwerkt-slot in verstuur-mail.
+// Fouten hier mogen de webhook-ack nooit blokkeren.
+const COMMUNICATIE_VERSTUUR_URL = 'https://mva-communicatie.netlify.app/.netlify/functions/verstuur-mail';
+
+async function schrijfWelkomstmailEvent(d, otdH){
+  if(!LEADPOOL_SERVICE_KEY) return; // env ontbreekt: stilletjes overslaan
+
+  // eerste opdrachtgever = ontvanger + aanhef
+  const ogRes = await fetch(OTD_URL+'/rest/v1/otd_opdrachtgevers?select=voornamen,tussenvoegsels,achternaam,email&dossier_id=eq.'+d.id+'&order=volgorde.asc&limit=1',{headers:otdH});
+  const ogArr = ogRes.ok ? await ogRes.json() : [];
+  const og0 = ogArr[0];
+  if(!og0 || !og0.email) return; // zonder klantadres geen welkomstmail
+
+  // makelaar
+  let mak = null;
+  if(d.makelaar_id){
+    const mRes = await fetch(OTD_URL+'/rest/v1/otd_makelaars?select=naam,email&id=eq.'+d.makelaar_id,{headers:otdH});
+    const mArr = mRes.ok ? await mRes.json() : [];
+    mak = mArr[0] || null;
+  }
+
+  const evt = {
+    event_type: (d.documenttype === 'aankoop') ? 'otd_getekend_aankoop' : 'otd_getekend_verkoop',
+    bron: 'mva-otd',
+    payload: {
+      klant_naam: [og0.voornamen, og0.tussenvoegsels, og0.achternaam].filter(Boolean).join(' '),
+      klant_email: og0.email,
+      makelaar_naam: (mak && mak.naam) || null,
+      makelaar_email: (mak && mak.email) || null,
+      pand_adres: d.object_adres || null,
+      taal: (d.taal === 'nl_en') ? 'en' : 'nl', // tweetalige opdracht = Engelstalige klant
+      otd_dossier_id: String(d.id)
+    },
+    status: 'nieuw'
+  };
+
+  const ins = await fetch(LEADPOOL_URL+'/rest/v1/communicatie_events', {
+    method:'POST',
+    headers: {
+      apikey: LEADPOOL_SERVICE_KEY,
+      Authorization: 'Bearer '+LEADPOOL_SERVICE_KEY,
+      'Content-Type':'application/json',
+      Prefer:'return=representation'
+    },
+    body: JSON.stringify(evt)
+  });
+  if(!ins.ok) return;
+  const rows = await ins.json().catch(()=>[]);
+  const eventId = rows && rows[0] && rows[0].id;
+  if(!eventId) return;
+
+  // mail-motor triggeren; het verwerkt-slot daar voorkomt dubbele verzending
+  await fetch(COMMUNICATIE_VERSTUUR_URL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ event_id: eventId })
+  });
+}
+
 exports.handler = async (event) => {
   try {
     if(event.httpMethod !== 'POST') return ok({ ignored:'methode' });
@@ -264,6 +326,8 @@ exports.handler = async (event) => {
       // 3) getekende OTD + voorwaarden naar klant + kopie/actiemail makelaar
       const host = (event.headers && event.headers.host) || 'otd-mva.netlify.app';
       try { await verstuurGetekend(trxId, d, otdH, host, wwftZaak); } catch(e){ /* mailfout blokkeert de ack niet */ }
+      // 4) welkom/stappenplan-mail (brochure) via de communicatie-app — de ene poort
+      try { await schrijfWelkomstmailEvent(d, otdH); } catch(e){ /* blokkeert de ack niet */ }
       return ok({ updated:'ondertekend', dossier:d.id });
     }
 
